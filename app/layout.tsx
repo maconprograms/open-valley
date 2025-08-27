@@ -5,8 +5,8 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Warren, VT Community Data Dashboard",
-  description: "Property transfer and parcel ownership data analysis for Warren, Vermont",
+  title: "Open Valley - Warren, VT Community Data",
+  description: "Community data platform for the Mad River Valley - property insights, events, and local directory",
   generator: "v0.app",
 }
 
@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>{children}</body>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   )
 }
