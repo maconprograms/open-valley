@@ -22,6 +22,9 @@ type MapProviderProps = {
   children?: React.ReactNode
 }
 
+export { MapProvider }
+
+// Keep default export for backward compatibility
 export default function MapProvider({
   mapContainerRef,
   initialViewState = {

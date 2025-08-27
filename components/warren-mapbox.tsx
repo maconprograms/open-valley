@@ -4,7 +4,7 @@ import { useRef } from "react"
 import MapProvider from "./mapbox/map-provider"
 import MapControls from "./mapbox/map-controls"
 
-export default function WarrenMapbox() {
+export function WarrenMapbox() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
 
   return (
@@ -16,3 +16,6 @@ export default function WarrenMapbox() {
     </div>
   )
 }
+
+// Keep default export for backward compatibility
+export default WarrenMapbox
