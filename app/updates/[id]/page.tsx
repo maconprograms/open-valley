@@ -1,34 +1,38 @@
-"use client"
+"use client";
 
-import { createClient } from "@/lib/supabase/server"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, Calendar, Share2 } from "lucide-react"
-import Link from "next/link"
-import { notFound } from "next/navigation"
+import { createClient } from "@/lib/supabase/client";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Calendar, Share2 } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 interface Update {
-  id: string
-  title: string
-  content: string
-  excerpt: string
-  category: string
-  published_at: string
-  created_at: string
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string;
+  category: string;
+  published_at: string;
+  created_at: string;
 }
 
 export default async function UpdateDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: { id: string };
 }) {
-  const supabase = await createClient()
+  const supabase = createClient();
 
-  const { data: update, error } = await supabase.from("updates").select("*").eq("id", params.id).single()
+  const { data: update, error } = await supabase
+    .from("updates")
+    .select("*")
+    .eq("id", params.id)
+    .single();
 
   if (error || !update) {
-    notFound()
+    notFound();
   }
 
   const formatDate = (dateString: string) => {
@@ -36,21 +40,21 @@ export default async function UpdateDetailPage({
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "data-release":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-200"
+        return "bg-blue-100 text-blue-800 hover:bg-blue-200";
       case "policy":
-        return "bg-amber-100 text-amber-800 hover:bg-amber-200"
+        return "bg-amber-100 text-amber-800 hover:bg-amber-200";
       case "research":
-        return "bg-green-100 text-green-800 hover:bg-green-200"
+        return "bg-green-100 text-green-800 hover:bg-green-200";
       default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-200"
+        return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,9 +78,13 @@ export default async function UpdateDetailPage({
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">{update.title}</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            {update.title}
+          </h1>
 
-          <p className="text-xl text-gray-600 leading-relaxed">{update.excerpt}</p>
+          <p className="text-xl text-gray-600 leading-relaxed">
+            {update.excerpt}
+          </p>
         </div>
 
         {/* Content */}
@@ -100,7 +108,7 @@ export default async function UpdateDetailPage({
               <Button
                 variant="outline"
                 onClick={() => {
-                  navigator.clipboard.writeText(window.location.href)
+                  navigator.clipboard.writeText(window.location.href);
                 }}
               >
                 <Share2 className="w-4 h-4 mr-2" />
@@ -110,16 +118,19 @@ export default async function UpdateDetailPage({
           </CardHeader>
           <CardContent>
             <p className="text-gray-600">
-              Share this Warren, VT community update with others interested in local property data and housing trends.
+              Share this Warren, VT community update with others interested in
+              local property data and housing trends.
             </p>
             <div className="mt-4 p-3 bg-gray-100 rounded-lg">
               <code className="text-sm text-gray-800 break-all">
-                {typeof window !== "undefined" ? window.location.href : `https://your-domain.com/updates/${update.id}`}
+                {typeof window !== "undefined"
+                  ? window.location.href
+                  : `https://your-domain.com/updates/${update.id}`}
               </code>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }
