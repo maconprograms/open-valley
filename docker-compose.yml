@@ -1,0 +1,23 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    image: openvalley-db:latest
+    container_name: openvalley-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-openvalley}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openvalley}
+      POSTGRES_DB: ${POSTGRES_DB:-openvalley}
+    ports:
+      - "5432:5432"
+    volumes:
+      - openvalley_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openvalley -d openvalley"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  openvalley_data:
