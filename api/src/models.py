@@ -5,7 +5,8 @@ from datetime import datetime
 from decimal import Decimal
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -227,6 +228,11 @@ class FPFPost(Base):
     is_reply: Mapped[bool] = mapped_column(Boolean, default=False)
     published_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
+    # Embedding columns for semantic search (3072 dims for text-embedding-3-large)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(3072), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    embedded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # Relationships
     issue: Mapped["FPFIssue"] = relationship("FPFIssue", back_populates="posts")
     person: Mapped["FPFPerson"] = relationship("FPFPerson", back_populates="posts")
@@ -252,3 +258,9 @@ class Organization(Base):
 
     def __repr__(self) -> str:
         return f"<Organization {self.name}>"
+
+
+# Note: pgvector 0.7.4 limits HNSW/IVFFlat indexes to 2000 dimensions.
+# With text-embedding-3-large (3072 dims), we use sequential scan which is
+# still fast for ~60k posts. For larger datasets, consider using the
+# text-embedding-3-small model (1536 dims) with HNSW indexing.

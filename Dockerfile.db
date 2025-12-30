@@ -1,16 +1,8 @@
-FROM postgis/postgis:16-3.4
+# Use official pgvector image which includes PostGIS
+FROM pgvector/pgvector:pg16
 
-# Install build dependencies for pgvector
+# The pgvector image is based on postgres:16
+# We need to add PostGIS
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
-    postgresql-server-dev-16 \
+    postgresql-16-postgis-3 \
     && rm -rf /var/lib/apt/lists/*
-
-# Install pgvector
-RUN cd /tmp \
-    && git clone --branch v0.7.4 https://github.com/pgvector/pgvector.git \
-    && cd pgvector \
-    && make \
-    && make install \
-    && rm -rf /tmp/pgvector

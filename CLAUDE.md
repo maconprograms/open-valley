@@ -24,6 +24,12 @@ A conversational AI platform for exploring Warren, VT community data through a P
 - BeautifulSoup parser for extracting posts from HTML emails
 - Person deduplication by email or (name + road + town)
 
+**Phase 4: Complete** - FPF Semantic Search
+- pgvector extension for vector similarity search
+- OpenAI text-embedding-3-small embeddings (1536 dimensions)
+- `search_fpf_posts` agent tool with semantic search
+- Pipeline runner script for fetch → parse → embed workflow
+
 ## Quick Start
 
 ```bash
@@ -102,8 +108,11 @@ open-valley/
 │   │   ├── main.py           # FastAPI application + AG-UI endpoint
 │   │   └── models.py         # SQLAlchemy ORM models
 │   ├── scripts/
-│   │   ├── import_parcels.py   # Vermont Geodata parcel import
-│   │   └── parse_fpf_emails.py # Front Porch Forum email import
+│   │   ├── import_parcels.py     # Vermont Geodata parcel import
+│   │   ├── fetch_fpf_emails.py   # Gmail API → JSON files
+│   │   ├── parse_fpf_emails.py   # JSON → Database (posts, people)
+│   │   ├── embed_fpf_posts.py    # Generate OpenAI embeddings
+│   │   └── run_fpf_pipeline.py   # Orchestrate full FPF pipeline
 │   └── pyproject.toml
 ├── web/                      # Next.js frontend
 │   ├── src/
@@ -120,8 +129,9 @@ open-valley/
 ## Architecture
 
 - **Agent**: Pydantic AI with Claude Opus 4.5 via Pydantic AI Gateway
+- **Embeddings**: Pydantic AI Embedder with OpenAI text-embedding-3-small
 - **Protocol**: AG-UI streaming over CopilotKit's JSON-RPC wrapper
-- **Database**: PostgreSQL with PostGIS (Docker locally)
+- **Database**: PostgreSQL with PostGIS + pgvector (Docker locally)
 - **ORM**: SQLAlchemy 2.0 with typed models
 - **API**: FastAPI with CORS for frontend
 - **Frontend**: Next.js 14 + CopilotKit + Recharts + Leaflet
@@ -129,14 +139,26 @@ open-valley/
 
 ## Agent Tools
 
-The Warren Property Assistant has these tools defined in `api/src/agent.py`:
+The Warren Community Assistant has these tools defined in `api/src/agent.py`:
 
+### Property Tools
 | Tool | Returns | Description |
 |------|---------|-------------|
 | `get_property_stats()` | PropertyStats | Aggregate stats: count, total value, homestead % |
 | `get_property_type_breakdown()` | list[PropertyTypeBreakdown] | Properties grouped by type |
 | `search_properties(...)` | list[PropertySummary] | Search by address, owner, value, homestead |
 | `get_property_by_span(span)` | PropertySummary | Single property by SPAN ID |
+
+### FPF Community Tools
+| Tool | Returns | Description |
+|------|---------|-------------|
+| `search_fpf_posts(query, ...)` | FPFSearchResult | Semantic search over 58k community posts |
+
+**search_fpf_posts parameters:**
+- `query`: Natural language search (e.g., "lost dog", "firewood for sale")
+- `limit`: Max results (default 10, max 50)
+- `category`: Filter by category ("Announcements", "For sale", etc.)
+- `town`: Filter by author's town ("Warren", "Waitsfield", etc.)
 
 ## Artifact Types
 
@@ -155,6 +177,7 @@ Create `api/.env`:
 ```
 DATABASE_URL=postgresql://openvalley:openvalley@localhost:5432/openvalley
 PYDANTIC_AI_GATEWAY_API_KEY=<your-gateway-key>
+OPENAI_API_KEY=<your-openai-key>  # For embeddings
 LOGFIRE_TOKEN=<optional-logfire-token>
 ```
 
@@ -168,7 +191,7 @@ LOGFIRE_TOKEN=<optional-logfire-token>
 ### Front Porch Forum Tables
 - **fpf_issues**: 3,298 daily email digests (issue_number, published_at, gmail_id, subject)
 - **fpf_people**: 6,438 community members (name, email, road, town, first/last_seen_at)
-- **fpf_posts**: 58,174 posts (title, content, category, is_reply, linked to issue + person)
+- **fpf_posts**: 58,174 posts with embeddings (title, content, category, embedding vector)
 - **organizations**: Placeholder for orgs mentioned in posts (to be populated via NER)
 
 ### Key Insights
@@ -201,6 +224,82 @@ uv run python scripts/import_parcels.py --import
 
 # Import FPF emails (requires data/fpf_emails/*.json)
 uv run python scripts/parse_fpf_emails.py
+```
+
+## FPF Semantic Search Pipeline
+
+The FPF data flows through three stages:
+
+```
+Gmail API → fetch_fpf_emails.py → data/fpf_emails/*.json
+                                          ↓
+                                  parse_fpf_emails.py
+                                          ↓
+                                  PostgreSQL (fpf_posts)
+                                          ↓
+                                  embed_fpf_posts.py
+                                          ↓
+                                  pgvector embeddings
+                                          ↓
+                                  search_fpf_posts tool
+```
+
+### Running the Pipeline
+
+```bash
+cd api
+
+# Full pipeline (requires Gmail credentials)
+uv run python scripts/run_fpf_pipeline.py
+
+# Skip fetch (use existing emails)
+uv run python scripts/run_fpf_pipeline.py --skip-fetch
+
+# Only generate embeddings
+uv run python scripts/run_fpf_pipeline.py --embed-only
+
+# Test with limited posts
+uv run python scripts/run_fpf_pipeline.py --embed-only --limit 100
+
+# Re-embed all posts (if model changes)
+uv run python scripts/run_fpf_pipeline.py --embed-only --force-embed
+```
+
+### Individual Scripts
+
+```bash
+# 1. Fetch emails from Gmail (requires credentials.json)
+uv run python scripts/fetch_fpf_emails.py
+
+# 2. Parse emails into database
+uv run python scripts/parse_fpf_emails.py
+
+# 3. Generate embeddings
+uv run python scripts/embed_fpf_posts.py
+uv run python scripts/embed_fpf_posts.py --limit 100  # Test run
+uv run python scripts/embed_fpf_posts.py --force      # Re-embed all
+```
+
+### Embedding Configuration
+
+- **Model**: `openai:text-embedding-3-large` (3072 dimensions, max quality)
+- **Search**: Sequential scan (pgvector indexes limited to 2000 dims)
+- **Cost**: ~$1.50 for 58k posts (~11.6M tokens @ $0.13/1M)
+
+### Verify Embeddings
+
+```sql
+-- Check embedding progress
+SELECT
+    COUNT(*) as total,
+    COUNT(embedding) as embedded
+FROM fpf_posts;
+
+-- Sample embedded posts
+SELECT title, embedding_model, embedded_at
+FROM fpf_posts
+WHERE embedding IS NOT NULL
+LIMIT 5;
 ```
 
 ## Data Sources
