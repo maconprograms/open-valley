@@ -7,11 +7,11 @@ from decimal import Decimal
 import logfire
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
-from sqlalchemy import func
+from pydantic_ai import Agent, Embedder, RunContext
+from sqlalchemy import func, select
 
-from .database import SessionLocal
-from .models import Owner, Parcel, TaxStatus
+from .database import SessionLocal, engine
+from .models import FPFPerson, FPFPost, Owner, Parcel, TaxStatus
 
 load_dotenv()
 
@@ -53,6 +53,25 @@ class PropertyTypeBreakdown(BaseModel):
     avg_value: int
 
 
+class FPFPostSummary(BaseModel):
+    """Summary of an FPF post for search results."""
+    id: str
+    title: str
+    content_preview: str
+    author: str | None
+    town: str | None
+    category: str | None
+    published_at: str
+    similarity_score: float
+
+
+class FPFSearchResult(BaseModel):
+    """Semantic search results for FPF posts."""
+    query: str
+    results: list[FPFPostSummary]
+    total_matches: int
+
+
 @dataclass
 class WarrenContext:
     """Context for the Warren agent - database session."""
@@ -63,7 +82,7 @@ class WarrenContext:
 warren_agent = Agent(
     "gateway/anthropic:claude-opus-4-5-20251101",
     system_prompt="""You are a community data assistant for Warren, Vermont. You help users
-understand property data, residency patterns, and community statistics.
+understand property data, residency patterns, community discussions, and local statistics.
 
 Warren is a small town in the Mad River Valley with approximately 1,800 residents.
 It's home to Sugarbush Resort and has a significant second-home population.
@@ -72,14 +91,23 @@ The town has about 1,800 parcels with a total assessed value of nearly $500 mill
 Key insight: Only about 24% of properties have filed homestead exemptions,
 indicating the majority are likely second homes or investment properties.
 
+You also have access to Front Porch Forum (FPF) posts from the Mad River Valley community.
+This includes over 58,000 posts from ~6,400 community members across Warren, Waitsfield,
+Fayston, Moretown, and nearby towns. Use search_fpf_posts to find community discussions,
+announcements, items for sale, and other neighborhood conversations using semantic search.
+
 When answering questions:
 - Use the tools to get precise data from the database
 - Always provide specific numbers when available
 - Explain what the data means in the local context
+- For FPF searches, the similarity score indicates how relevant each post is to the query
 - Be concise but informative
 """,
     deps_type=WarrenContext,
 )
+
+# Initialize embedder for semantic search (via Gateway, large model for max quality)
+fpf_embedder = Embedder("gateway/openai:text-embedding-3-large")
 
 
 @warren_agent.tool
@@ -229,6 +257,97 @@ def get_property_by_span(ctx: RunContext[WarrenContext], span: str) -> PropertyS
         )
     finally:
         db.close()
+
+
+@warren_agent.tool
+async def search_fpf_posts(
+    ctx: RunContext[WarrenContext],
+    query: str,
+    limit: int = 10,
+    category: str | None = None,
+    town: str | None = None,
+) -> FPFSearchResult:
+    """Search Front Porch Forum posts using semantic similarity.
+
+    Args:
+        query: Natural language search query (e.g., "lost dog", "road construction", "firewood for sale")
+        limit: Maximum number of results (default 10, max 50)
+        category: Filter by category (e.g., "Announcements", "For sale", "Free items", "Seeking items")
+        town: Filter by author's town (e.g., "Warren", "Waitsfield", "Fayston", "Moretown")
+    """
+    from sqlalchemy.orm import Session
+
+    # Clamp limit
+    limit = min(max(1, limit), 50)
+
+    # Generate query embedding
+    result = await fpf_embedder.embed_query(query)
+    query_embedding = result.embeddings[0]
+
+    with Session(engine) as db:
+        # Check if we have any embeddings
+        embedded_count = db.scalar(
+            select(func.count(FPFPost.id)).where(FPFPost.embedding.isnot(None))
+        )
+
+        if embedded_count == 0:
+            return FPFSearchResult(
+                query=query,
+                results=[],
+                total_matches=0,
+            )
+
+        # Build query with cosine similarity
+        # pgvector cosine_distance returns 0 for identical, 2 for opposite
+        # Convert to similarity: 1 - (distance / 2) gives us 0-1 range
+        similarity = 1 - (FPFPost.embedding.cosine_distance(query_embedding) / 2)
+
+        stmt = (
+            select(
+                FPFPost,
+                FPFPerson.name.label("author_name"),
+                FPFPerson.town.label("author_town"),
+                similarity.label("similarity"),
+            )
+            .join(FPFPerson, FPFPost.person_id == FPFPerson.id)
+            .where(FPFPost.embedding.isnot(None))
+            .order_by(similarity.desc())
+        )
+
+        if category:
+            stmt = stmt.where(FPFPost.category == category)
+        if town:
+            stmt = stmt.where(FPFPerson.town == town)
+
+        stmt = stmt.limit(limit)
+
+        rows = db.execute(stmt).all()
+
+        results = []
+        for row in rows:
+            post = row.FPFPost
+            content_preview = post.content[:200] if post.content else ""
+            if len(post.content) > 200:
+                content_preview += "..."
+
+            results.append(
+                FPFPostSummary(
+                    id=str(post.id),
+                    title=post.title,
+                    content_preview=content_preview,
+                    author=row.author_name,
+                    town=row.author_town,
+                    category=post.category,
+                    published_at=post.published_at.isoformat(),
+                    similarity_score=round(float(row.similarity), 4),
+                )
+            )
+
+        return FPFSearchResult(
+            query=query,
+            results=results,
+            total_matches=len(results),
+        )
 
 
 async def chat(message: str) -> str:
