@@ -7,17 +7,22 @@ from contextlib import asynccontextmanager
 import logfire
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy import func
 from starlette.requests import Request
 
+import httpx
+
 from .agent import WarrenContext, warren_agent
-from .database import init_db
+from .database import SessionLocal, init_db
+from .models import Dwelling, Parcel, STRListing, TaxStatus
+
+# Vermont Geodata ArcGIS REST API
+ARCGIS_BASE = "https://services1.arcgis.com/BkFxaEFNwHqX3tAw/arcgis/rest/services"
+PARCELS_LAYER = "FS_VCGI_OPENDATA_Cadastral_VTPARCELS_poly_standardized_parcels_SP_v1/FeatureServer/0"
+PARCELS_URL = f"{ARCGIS_BASE}/{PARCELS_LAYER}/query"
 
 logger = logging.getLogger(__name__)
-
-# Configure Logfire for observability
-if os.getenv("LOGFIRE_TOKEN"):
-    logfire.configure()
-    logfire.instrument_fastapi()
 
 
 @asynccontextmanager
@@ -34,10 +39,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Configure Logfire for observability (after app creation)
+if os.getenv("LOGFIRE_TOKEN"):
+    logfire.configure()
+    logfire.instrument_fastapi(app)
+
 # CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000", "http://localhost:3999", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -97,11 +107,11 @@ async def awp_info():
         "agents": {
             "default": {
                 "name": "default",
-                "description": "Warren Property Assistant - helps explore property data in Warren, VT"
+                "description": "Warren Property Assistant - helps explore property data in Warren, VT",
             }
         },
         "actions": [],
-        "version": "1.0"
+        "version": "1.0",
     }
 
 
@@ -112,11 +122,11 @@ async def awp_info_post():
         "agents": {
             "default": {
                 "name": "default",
-                "description": "Warren Property Assistant - helps explore property data in Warren, VT"
+                "description": "Warren Property Assistant - helps explore property data in Warren, VT",
             }
         },
         "actions": [],
-        "version": "1.0"
+        "version": "1.0",
     }
 
 
@@ -128,6 +138,7 @@ async def awp_endpoint(request: Request):
     to Pydantic AI's AGUIAdapter for streaming responses.
     """
     import json
+
     from fastapi.responses import JSONResponse
 
     body_bytes = await request.body()
@@ -138,16 +149,18 @@ async def awp_endpoint(request: Request):
 
     # Handle CopilotKit's JSON-RPC style protocol
     if method == "info":
-        return JSONResponse({
-            "agents": {
-                "default": {
-                    "name": "default",
-                    "description": "Warren Property Assistant - helps explore property data in Warren, VT"
-                }
-            },
-            "actions": [],
-            "version": "1.0"
-        })
+        return JSONResponse(
+            {
+                "agents": {
+                    "default": {
+                        "name": "default",
+                        "description": "Warren Property Assistant - helps explore property data in Warren, VT",
+                    }
+                },
+                "actions": [],
+                "version": "1.0",
+            }
+        )
 
     if method in ("agent/connect", "agent/run"):
         # Extract the AG-UI payload from body.body
@@ -180,3 +193,213 @@ async def awp_endpoint(request: Request):
 
     # Unknown method
     return JSONResponse({"error": f"Unknown method: {method}"}, status_code=400)
+
+
+# =============================================================================
+# Dashboard Stats API
+# =============================================================================
+
+
+class ParcelStats(BaseModel):
+    """Statistics about parcels."""
+    count: int
+    total_value: int
+
+
+class HomesteadStats(BaseModel):
+    """Homestead statistics."""
+    count: int
+    percent: float
+
+
+class DwellingStats(BaseModel):
+    """Dwelling statistics by classification."""
+    total: int
+    homestead: HomesteadStats
+    nhs_residential: HomesteadStats
+
+
+class STRStats(BaseModel):
+    """Short-term rental statistics."""
+    count: int
+
+
+class DashboardStatsResponse(BaseModel):
+    """Complete dashboard statistics response."""
+    parcels: ParcelStats
+    dwellings: DwellingStats
+    str_listings: STRStats
+
+
+@app.get("/api/stats", response_model=DashboardStatsResponse)
+async def get_dashboard_stats():
+    """Return key statistics for the dashboard.
+
+    This endpoint provides aggregate statistics for the Open Valley dashboard:
+    - Total parcels and assessed value
+    - Dwelling breakdown by Act 73 classification (homestead vs NHS residential)
+    - Short-term rental listing count
+    """
+    db = SessionLocal()
+    try:
+        # Parcel statistics
+        parcel_count = db.query(func.count(Parcel.id)).scalar() or 0
+        total_value = db.query(func.sum(Parcel.assessed_total)).scalar() or 0
+
+        # Dwelling statistics (Act 73 classifications)
+        total_dwellings = db.query(func.count(Dwelling.id)).scalar() or 0
+        homestead_dwellings = db.query(func.count(Dwelling.id)).filter(
+            Dwelling.tax_classification == "HOMESTEAD"
+        ).scalar() or 0
+        nhs_residential_dwellings = db.query(func.count(Dwelling.id)).filter(
+            Dwelling.tax_classification == "NHS_RESIDENTIAL"
+        ).scalar() or 0
+
+        # Calculate percentages (avoid division by zero)
+        if total_dwellings > 0:
+            homestead_pct = round((homestead_dwellings / total_dwellings) * 100, 1)
+            nhs_pct = round((nhs_residential_dwellings / total_dwellings) * 100, 1)
+        else:
+            # Fallback to parcel-based homestead calculation if no dwellings
+            homestead_count = db.query(func.count(TaxStatus.id)).filter(
+                TaxStatus.homestead_filed == True
+            ).scalar() or 0
+            non_homestead_count = db.query(func.count(TaxStatus.id)).filter(
+                TaxStatus.homestead_filed == False
+            ).scalar() or 0
+            total_with_status = homestead_count + non_homestead_count
+
+            if total_with_status > 0:
+                homestead_pct = round((homestead_count / total_with_status) * 100, 1)
+                nhs_pct = round((non_homestead_count / total_with_status) * 100, 1)
+                homestead_dwellings = homestead_count
+                nhs_residential_dwellings = non_homestead_count
+                total_dwellings = total_with_status
+            else:
+                homestead_pct = 0.0
+                nhs_pct = 0.0
+
+        # STR listing count
+        str_count = db.query(func.count(STRListing.id)).filter(
+            STRListing.is_active == True
+        ).scalar() or 0
+
+        return DashboardStatsResponse(
+            parcels=ParcelStats(
+                count=parcel_count,
+                total_value=int(total_value),
+            ),
+            dwellings=DwellingStats(
+                total=total_dwellings,
+                homestead=HomesteadStats(
+                    count=homestead_dwellings,
+                    percent=homestead_pct,
+                ),
+                nhs_residential=HomesteadStats(
+                    count=nhs_residential_dwellings,
+                    percent=nhs_pct,
+                ),
+            ),
+            str_listings=STRStats(count=str_count),
+        )
+    finally:
+        db.close()
+
+
+# =============================================================================
+# GeoJSON API for MapLibre
+# =============================================================================
+
+# Cache for Vermont Geodata response (avoid repeated API calls)
+_geojson_cache: dict = {"data": None, "timestamp": 0}
+CACHE_TTL = 3600  # 1 hour
+
+
+@app.get("/api/parcels/geojson")
+async def get_parcels_geojson():
+    """Return Warren parcels as GeoJSON with homestead classification.
+
+    Fetches geometry from Vermont Geodata API and enriches with local
+    homestead filing status for choropleth visualization.
+    """
+    import time
+
+    current_time = time.time()
+
+    # Check cache
+    if _geojson_cache["data"] and (current_time - _geojson_cache["timestamp"]) < CACHE_TTL:
+        logger.debug("Returning cached GeoJSON")
+        return _geojson_cache["data"]
+
+    # Fetch from Vermont Geodata
+    logger.info("Fetching parcels from Vermont Geodata API...")
+
+    all_features = []
+    offset = 0
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        while True:
+            params = {
+                "where": "TOWN = 'WARREN'",
+                "outFields": "SPAN,E911ADDR,OWNER1,REAL_FLV,ACRESGL,HSDECL",
+                "returnGeometry": "true",
+                "outSR": "4326",
+                "f": "geojson",
+                "resultOffset": offset,
+                "resultRecordCount": 1000,
+            }
+
+            response = await client.get(PARCELS_URL, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            features = data.get("features", [])
+            if not features:
+                break
+
+            all_features.extend(features)
+
+            if len(features) < 1000:
+                break
+            offset += 1000
+
+    logger.info(f"Fetched {len(all_features)} parcels from Vermont Geodata")
+
+    # Get local homestead data for enrichment
+    db = SessionLocal()
+    try:
+        # Build SPAN -> homestead_filed lookup
+        tax_records = db.query(TaxStatus.parcel_id, TaxStatus.homestead_filed, Parcel.span).join(
+            Parcel, TaxStatus.parcel_id == Parcel.id
+        ).all()
+
+        homestead_lookup = {r.span: r.homestead_filed for r in tax_records}
+        logger.debug(f"Built homestead lookup with {len(homestead_lookup)} entries")
+    finally:
+        db.close()
+
+    # Enrich features with local homestead data
+    for feature in all_features:
+        props = feature.get("properties", {})
+        span = props.get("SPAN")
+
+        # Use local data if available, otherwise fall back to API data
+        if span and span in homestead_lookup:
+            props["homestead_filed"] = homestead_lookup[span]
+        else:
+            # Fall back to HSDECL from API
+            props["homestead_filed"] = props.get("HSDECL") == "Y"
+
+        # Add classification for choropleth
+        props["classification"] = "homestead" if props["homestead_filed"] else "second_home"
+
+    result = {
+        "type": "FeatureCollection",
+        "features": all_features,
+    }
+
+    # Update cache
+    _geojson_cache["data"] = result
+    _geojson_cache["timestamp"] = current_time
+
+    return result

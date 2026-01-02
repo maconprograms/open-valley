@@ -8,6 +8,7 @@ interface MapMarker {
   label?: string;
   color?: string;
   popup?: string;
+  isStr?: boolean;
 }
 
 interface MapData {
@@ -18,13 +19,14 @@ interface MapData {
 
 interface MapArtifactProps {
   data: unknown;
+  isDwellingMap?: boolean;
 }
 
 // Default center: Warren, VT
 const WARREN_CENTER: [number, number] = [44.1167, -72.8653];
 const DEFAULT_ZOOM = 13;
 
-export default function MapArtifact({ data }: MapArtifactProps) {
+export default function MapArtifact({ data, isDwellingMap = false }: MapArtifactProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -58,18 +60,45 @@ export default function MapArtifact({ data }: MapArtifactProps) {
       // Add markers
       if (mapData?.markers) {
         mapData.markers.forEach((marker) => {
-          const color = marker.color === "green" ? "#22c55e" : "#f97316";
+          // Color mapping for dwelling maps
+          let color = "#f97316"; // default orange
+          if (marker.color === "green") {
+            color = "#22c55e";
+          } else if (marker.color === "red") {
+            color = "#ef4444";
+          } else if (marker.color === "orange") {
+            color = "#f97316";
+          }
+
+          // For dwelling maps with STRs, show a special marker
+          const strIndicator = isDwellingMap && marker.isStr
+            ? `<span style="
+                position: absolute;
+                top: -4px;
+                right: -4px;
+                font-size: 10px;
+                background: #fbbf24;
+                border-radius: 50%;
+                width: 14px;
+                height: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 1px solid white;
+              ">🏠</span>`
+            : "";
 
           const icon = L.divIcon({
             className: "custom-marker",
             html: `<div style="
+              position: relative;
               width: 24px;
               height: 24px;
               background: ${color};
               border: 3px solid white;
               border-radius: 50%;
               box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            "></div>`,
+            ">${strIndicator}</div>`,
             iconSize: [24, 24],
             iconAnchor: [12, 12],
           });
@@ -97,7 +126,7 @@ export default function MapArtifact({ data }: MapArtifactProps) {
         mapRef.current = null;
       }
     };
-  }, [isClient, data]);
+  }, [isClient, data, isDwellingMap]);
 
   if (!isClient) {
     return (

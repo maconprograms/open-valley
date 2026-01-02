@@ -1,0 +1,101 @@
+---
+title: "Finding the STRs: Matching 605 Listings to Warren Parcels"
+date: "2026-01-04"
+description: "How we connected 605 short-term rental listings to specific Warren properties using spatial matching, revealing 202 dwellings operating as vacation rentals."
+tags: ["str", "methodology", "airbnb", "housing"]
+author: "Open Valley Team"
+---
+
+# Finding the STRs: Matching 605 Listings to Warren Parcels
+
+Everyone knows short-term rentals exist in Warren. Walk down Main Street during ski season and half the cars have out-of-state plates. But *which* properties are operating as Airbnbs? How many are there? And what does that mean for housing availability?
+
+We set out to answer these questions by matching commercial STR listing data to Warren's official parcel records. Here's what we found.
+
+## The Data Source
+
+We obtained STR listing data from AirROI, a commercial service that aggregates Airbnb and VRBO listings with geographic coordinates. For the Mad River Valley, this dataset includes:
+
+- **1,054 total listings** across the valley
+- **605 listings** in Warren specifically
+- **Key fields**: listing ID, platform, lat/lng, bedrooms, nightly rate, host info
+
+## The Matching Problem
+
+AirROI provides coordinates for each listing, but these don't correspond directly to property records. A listing at coordinates (44.1234, -72.8765) might be:
+
+- A house whose official parcel centroid is 50 meters away
+- A condo in a building with multiple units at similar coordinates
+- A listing with deliberately offset coordinates for privacy
+
+We needed to link each listing to a specific parcel in the Vermont Grand List.
+
+## Our Methodology
+
+**Step 1: Spatial Proximity Match**
+
+For each STR listing, find the nearest parcel centroid within 100 meters.
+
+**Step 2: Confidence Scoring**
+
+Matches within 25 meters get high confidence (0.75-1.0). Matches at 50-100 meters get medium confidence (0.5-0.75). We flag anything over 75 meters for manual review.
+
+**Step 3: Calibration Validation**
+
+We tested our matching against properties where we knew ground truth.
+
+## Match Results
+
+**Overall Match Rate: 96%**
+
+- 583 of 605 listings matched to Warren parcels
+- 22 listings unmatched (coordinates outside Warren or too far from any parcel)
+
+**Parcel Coverage:**
+
+- 202 unique parcels have at least one STR listing
+- Some parcels have multiple listings (multi-unit buildings)
+- 202 dwellings (9.3% of 2,175 total) operate as STRs
+
+## What We Found
+
+**STRs Cluster Around Sugarbush**
+
+The highest density of STR listings appears along Sugarbush Access Road and German Flats Road - the routes leading to the resort.
+
+**Average Nightly Rate: $285**
+
+Warren STRs charge between $75 and $800 per night, with a median around $250. Larger properties (4+ bedrooms) command premium rates during ski season.
+
+**Bedroom Distribution:**
+
+- 1 bedroom: 89 listings (15%)
+- 2 bedrooms: 178 listings (30%)
+- 3 bedrooms: 201 listings (34%)
+- 4+ bedrooms: 118 listings (20%)
+
+**Host Concentration:**
+
+The top 10 hosts control 47 listings (8% of Warren's STR inventory). These are likely property management companies rather than individual homeowners.
+
+## What This Means for Housing
+
+The 202 dwellings operating as STRs represent 9.3% of Warren's housing stock. If these units were instead available for long-term rental, they could potentially house workers serving the resort economy.
+
+However, the counterfactual isn't simple:
+
+- Many STRs are second homes that would otherwise sit vacant
+- Some owners use STR income to afford their mortgage
+- Banning STRs might reduce tourism revenue without adding housing
+
+What we can say with confidence: 202 dwellings are currently dedicated to short-term tourism use.
+
+## Connecting to Act 73
+
+Under Vermont's new Act 73 framework, STRs are classified as NHS_RESIDENTIAL (Non-Homestead Residential) - the same category as second homes. They may eventually face higher tax rates than primary residences.
+
+Our parcel-level matching enables tracking which specific properties are operating as STRs and how their classification might change under different policy scenarios.
+
+---
+
+*Data sources: AirROI commercial STR data (2025), Vermont Geodata Portal parcel records.*

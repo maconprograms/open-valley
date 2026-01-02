@@ -7,6 +7,8 @@ import ChartArtifact from "./artifacts/ChartArtifact";
 import TableArtifact from "./artifacts/TableArtifact";
 import StatsArtifact from "./artifacts/StatsArtifact";
 import PropertyCard from "./artifacts/PropertyCard";
+import PropertyBreakdown from "./artifacts/PropertyBreakdown";
+import DwellingBreakdown from "./artifacts/DwellingBreakdown";
 
 // Dynamic import for MapArtifact to avoid SSR issues with Leaflet
 const MapArtifact = dynamic(() => import("./artifacts/MapArtifact"), {
@@ -46,7 +48,8 @@ export default function ArtifactPanel({ artifacts, onAddArtifact }: ArtifactPane
   const renderArtifact = (artifact: Artifact) => {
     switch (artifact.type) {
       case "map":
-        return <MapArtifact data={artifact.data} />;
+      case "dwelling_map":
+        return <MapArtifact data={artifact.data} isDwellingMap={artifact.type === "dwelling_map"} />;
       case "pie_chart":
       case "bar_chart":
         return <ChartArtifact type={artifact.type} data={artifact.data} />;
@@ -56,6 +59,10 @@ export default function ArtifactPanel({ artifacts, onAddArtifact }: ArtifactPane
         return <StatsArtifact data={artifact.data} />;
       case "property_card":
         return <PropertyCard data={artifact.data} />;
+      case "property_breakdown":
+        return <PropertyBreakdown data={artifact.data} />;
+      case "dwelling_breakdown":
+        return <DwellingBreakdown data={artifact.data} />;
       default:
         return (
           <div className="p-4 text-gray-500">
@@ -145,6 +152,8 @@ function getArtifactIcon(type: Artifact["type"]) {
   switch (type) {
     case "map":
       return "🗺️";
+    case "dwelling_map":
+      return "📍";
     case "pie_chart":
       return "🥧";
     case "bar_chart":
@@ -155,6 +164,10 @@ function getArtifactIcon(type: Artifact["type"]) {
       return "📈";
     case "property_card":
       return "🏠";
+    case "property_breakdown":
+      return "🏘️";
+    case "dwelling_breakdown":
+      return "🏛️";
     default:
       return "📄";
   }
