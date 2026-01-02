@@ -403,3 +403,169 @@ async def get_parcels_geojson():
     _geojson_cache["timestamp"] = current_time
 
     return result
+
+
+# =============================================================================
+# Homestead Transitions API (for animated map)
+# =============================================================================
+
+
+@app.get("/api/transfers/transitions")
+async def get_homestead_transitions():
+    """Return homestead transitions as GeoJSON for map animation.
+
+    Each feature represents a property transfer classified by actual status change:
+
+    - TRUE_LOSS: VT seller (was homestead) → non-primary buyer (de-homesteading)
+    - TRUE_GAIN: Non-VT seller (was 2nd home) → primary buyer (re-homesteading)
+    - STAYED_HOMESTEAD: VT seller → primary buyer (no net change)
+    - STAYED_NON_HOMESTEAD: Non-VT seller → non-primary buyer (no net change)
+    - OTHER: Unknown seller state, open land, commercial, etc.
+
+    Uses coordinates directly from PTTR data (93% coverage).
+    """
+    from sqlalchemy import text as sql_text
+
+    db = SessionLocal()
+    try:
+        result = db.execute(sql_text("""
+            SELECT
+                b.raw_json::json->'attributes'->>'span' as span,
+                (b.raw_json::json->'attributes'->>'Latitude')::float as lat,
+                (b.raw_json::json->'attributes'->>'Longitude')::float as lng,
+                pt.transfer_date,
+                pt.sale_price,
+                b.raw_json::json->'attributes'->>'sellerSt' as seller_state,
+                b.raw_json::json->'attributes'->>'bUsePrDesc' as use_desc,
+                pt.buyer_state,
+                CASE
+                    -- TRUE LOSS: VT seller (was homestead) → non-primary buyer
+                    WHEN b.raw_json::json->'attributes'->>'sellerSt' = 'VT'
+                         AND (pt.intended_use = 'secondary'
+                              OR b.raw_json::json->'attributes'->>'bUsePrDesc' LIKE 'Non-PR%')
+                    THEN 'TRUE_LOSS'
+
+                    -- TRUE GAIN: Non-VT seller (was 2nd home) → primary buyer
+                    WHEN b.raw_json::json->'attributes'->>'sellerSt' IS NOT NULL
+                         AND b.raw_json::json->'attributes'->>'sellerSt' != 'VT'
+                         AND b.raw_json::json->'attributes'->>'bUsePrDesc'
+                             IN ('Domicile/Primary Residence', 'Principal Residence')
+                    THEN 'TRUE_GAIN'
+
+                    -- STAYED HOMESTEAD: VT seller → primary buyer (no change)
+                    WHEN b.raw_json::json->'attributes'->>'sellerSt' = 'VT'
+                         AND b.raw_json::json->'attributes'->>'bUsePrDesc'
+                             IN ('Domicile/Primary Residence', 'Principal Residence')
+                    THEN 'STAYED_HOMESTEAD'
+
+                    -- STAYED NON-HOMESTEAD: Non-VT seller → non-primary buyer (no change)
+                    WHEN b.raw_json::json->'attributes'->>'sellerSt' IS NOT NULL
+                         AND b.raw_json::json->'attributes'->>'sellerSt' != 'VT'
+                         AND (pt.intended_use = 'secondary'
+                              OR b.raw_json::json->'attributes'->>'bUsePrDesc' LIKE 'Non-PR%')
+                    THEN 'STAYED_NON_HOMESTEAD'
+
+                    -- OTHER: Unknown seller state, open land, commercial, etc.
+                    ELSE 'OTHER'
+                END as transition_type
+            FROM property_transfers pt
+            JOIN bronze_pttr_transfers b ON pt.bronze_id = b.id
+            WHERE pt.transfer_date >= '2019-01-01'
+              AND (b.raw_json::json->'attributes'->>'Latitude')::float != 0
+              AND (b.raw_json::json->'attributes'->>'Longitude')::float != 0
+            ORDER BY pt.transfer_date
+        """))
+
+        features = []
+        for row in result:
+            features.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [float(row.lng), float(row.lat)]
+                },
+                "properties": {
+                    "span": row.span,
+                    "date": row.transfer_date.isoformat() if row.transfer_date else None,
+                    "year": row.transfer_date.year if row.transfer_date else None,
+                    "sale_price": row.sale_price,
+                    "seller_state": row.seller_state,
+                    "buyer_state": row.buyer_state,
+                    "use_desc": row.use_desc,
+                    "transition_type": row.transition_type,
+                }
+            })
+
+        # Calculate summary stats by year with new categories
+        stats_result = db.execute(sql_text("""
+            SELECT
+                EXTRACT(YEAR FROM pt.transfer_date)::int as year,
+                -- TRUE LOSS: VT seller → non-primary (de-homesteading)
+                COUNT(*) FILTER (WHERE
+                    b.raw_json::json->'attributes'->>'sellerSt' = 'VT'
+                    AND (pt.intended_use = 'secondary'
+                         OR b.raw_json::json->'attributes'->>'bUsePrDesc' LIKE 'Non-PR%')
+                ) as true_losses,
+                -- TRUE GAIN: Non-VT seller → primary (re-homesteading)
+                COUNT(*) FILTER (WHERE
+                    b.raw_json::json->'attributes'->>'sellerSt' IS NOT NULL
+                    AND b.raw_json::json->'attributes'->>'sellerSt' != 'VT'
+                    AND b.raw_json::json->'attributes'->>'bUsePrDesc'
+                        IN ('Domicile/Primary Residence', 'Principal Residence')
+                ) as true_gains,
+                -- STAYED HOMESTEAD: VT seller → primary (no change)
+                COUNT(*) FILTER (WHERE
+                    b.raw_json::json->'attributes'->>'sellerSt' = 'VT'
+                    AND b.raw_json::json->'attributes'->>'bUsePrDesc'
+                        IN ('Domicile/Primary Residence', 'Principal Residence')
+                ) as stayed_homestead,
+                -- STAYED NON-HOMESTEAD: Non-VT seller → non-primary (no change)
+                COUNT(*) FILTER (WHERE
+                    b.raw_json::json->'attributes'->>'sellerSt' IS NOT NULL
+                    AND b.raw_json::json->'attributes'->>'sellerSt' != 'VT'
+                    AND (pt.intended_use = 'secondary'
+                         OR b.raw_json::json->'attributes'->>'bUsePrDesc' LIKE 'Non-PR%')
+                ) as stayed_non_homestead
+            FROM property_transfers pt
+            JOIN bronze_pttr_transfers b ON pt.bronze_id = b.id
+            WHERE pt.transfer_date >= '2019-01-01'
+              AND (b.raw_json::json->'attributes'->>'Latitude')::float != 0
+              AND (b.raw_json::json->'attributes'->>'Longitude')::float != 0
+            GROUP BY 1
+            ORDER BY 1
+        """))
+
+        yearly_stats = {
+            row.year: {
+                "true_losses": row.true_losses,
+                "true_gains": row.true_gains,
+                "stayed_homestead": row.stayed_homestead,
+                "stayed_non_homestead": row.stayed_non_homestead,
+                "net": row.true_gains - row.true_losses,
+            }
+            for row in stats_result
+        }
+
+        # Count by transition type
+        true_gains = sum(1 for f in features if f["properties"]["transition_type"] == "TRUE_GAIN")
+        true_losses = sum(1 for f in features if f["properties"]["transition_type"] == "TRUE_LOSS")
+        stayed_homestead = sum(1 for f in features if f["properties"]["transition_type"] == "STAYED_HOMESTEAD")
+        stayed_non_homestead = sum(1 for f in features if f["properties"]["transition_type"] == "STAYED_NON_HOMESTEAD")
+        other = sum(1 for f in features if f["properties"]["transition_type"] == "OTHER")
+
+        return {
+            "type": "FeatureCollection",
+            "features": features,
+            "metadata": {
+                "total_features": len(features),
+                "true_gains": true_gains,
+                "true_losses": true_losses,
+                "stayed_homestead": stayed_homestead,
+                "stayed_non_homestead": stayed_non_homestead,
+                "other": other,
+                "net_change": true_gains - true_losses,
+                "yearly_stats": yearly_stats,
+            }
+        }
+    finally:
+        db.close()

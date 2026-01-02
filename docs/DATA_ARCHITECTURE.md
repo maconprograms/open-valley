@@ -122,6 +122,14 @@ Open Valley is a community intelligence platform for Warren, VT that connects:
 | **Silver** | Clean, validate, link, enrich | After bronze updates | `dwellings`, `people` |
 | **Gold** | Aggregate for analysis/reporting | On demand or scheduled | `dwelling_stats` |
 
+### Implementation Status (2026-01-02)
+
+| Layer | Documented | Implemented | Notes |
+|-------|------------|-------------|-------|
+| **Bronze** | 5 tables | 2 tables | `bronze_pttr_transfers`, `bronze_str_listings` exist. Missing: `bronze_parcels`, `bronze_fpf`, `bronze_owners` |
+| **Silver** | 8 tables | 10+ tables | All core tables exist plus extras: `fpf_people`, `fpf_issues`, `tax_status`, `dwelling_attestations` |
+| **Gold** | 5 views | 0 views | Not implemented - no materialized views or aggregates yet |
+
 ### Data Lineage
 
 Every silver/gold record tracks its source:

@@ -6,14 +6,25 @@ These four properties serve as ground truth for testing and calibrating our dwel
 
 ## Summary Table
 
-| # | Address | Owner | Lives | Dwellings | Use | Classification |
-|---|---------|-------|-------|-----------|-----|----------------|
-| 1 | 488 Woods Rd S | Phillips | Warren, VT | 1 | Owner-occupied primary | HOMESTEAD |
-| 2 | 448 Woods Rd S | Tremblay/Culmone | Harvard, MA | 1 | Second home | NHS_RESIDENTIAL |
-| 3 | 200 Woods Rd S | Schulthess Fabio | Switzerland | 2* | Main + LTR (ADU) | NHS_NONRESIDENTIAL |
-| 4 | 94 Woods Rd N | Mad River LLC | Brooklyn, NY | 1 | Short-term rental | NHS_RESIDENTIAL |
+| # | Address | Owner | Lives | Dwellings | Use | Classification | Status |
+|---|---------|-------|-------|-----------|-----|----------------|--------|
+| 1 | 488 Woods Rd S | Phillips | Warren, VT | 1 | Owner-occupied primary | HOMESTEAD | ✅ CORRECT |
+| 2 | 448 Woods Rd S | Tremblay/Culmone | Harvard, MA | 1 | Second home | NHS_RESIDENTIAL | ✅ CORRECT |
+| 3 | 200 Woods Rd S | Schulthess Fabio | Switzerland | 2* | Main + LTR (ADU) | NHS_NONRESIDENTIAL | ⚠️ MISSING ADU |
+| 4 | 94 Woods Rd N | Mad River LLC | Brooklyn, NY | 1 | Short-term rental | NHS_RESIDENTIAL | ✅ CORRECT |
 
 *ADU not in Grand List - requires manual addition
+
+### Validation Status (2026-01-02)
+
+| Issue | Original Status | Current Status |
+|-------|-----------------|----------------|
+| Phillips had 2 dwellings (CAT=R2 bug) | ❌ Wrong | ✅ Fixed - 1 dwelling |
+| Tremblay had 2 dwellings (CAT=R2 bug) | ❌ Wrong | ✅ Fixed - 1 dwelling |
+| "The Vines" STR incorrectly matched to Phillips | ❌ Wrong | ✅ Fixed - matches 129 Lincoln Gap Rd |
+| HYGGE HAUS linked to Mad River LLC | ⏳ Pending | ✅ Fixed - match_confidence 0.85 |
+| Schulthess ADU missing | ⏳ Pending | ⏳ Still missing - needs manual add |
+| Tremblay not in property_ownerships | ⏳ Unknown | ⚠️ Only Culmone has ownership record |
 
 ---
 
@@ -215,8 +226,9 @@ ORDER BY p.address;
 
 ## Action Items
 
-1. [ ] **Fix import script** - Parse DESCPROP instead of using CAT for dwelling count
-2. [ ] **Delete incorrect dwellings** - Remove phantom 2nd dwellings from 488 and 448
-3. [ ] **Add Fabio's ADU** - Manually create dwelling for apartment above garage
-4. [ ] **Fix The Vines STR match** - Find correct parcel for this listing
-5. [ ] **Update Phillips mailing address** - Or note that HSDECL is authoritative
+1. [x] **Fix import script** - Parse DESCPROP instead of using CAT for dwelling count ✅ DONE
+2. [x] **Delete incorrect dwellings** - Remove phantom 2nd dwellings from 488 and 448 ✅ DONE
+3. [ ] **Add Fabio's ADU** - Manually create dwelling for apartment above garage ⏳ PENDING
+4. [x] **Fix The Vines STR match** - Find correct parcel for this listing ✅ DONE (129 Lincoln Gap Rd)
+5. [x] **Update Phillips mailing address** - Or note that HSDECL is authoritative ✅ NOTED (HSDECL=Y is authoritative)
+6. [ ] **Add Tremblay to property_ownerships** - Create record for Erica Tremblay ⏳ NEW
