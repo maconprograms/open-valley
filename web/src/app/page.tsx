@@ -1,271 +1,273 @@
-"use client";
+import { StatsGrid } from "@/components/dashboard";
+import SiteLayout from "@/components/SiteLayout";
+import Link from "next/link";
+import WarrenMapLoader from "@/components/maps/WarrenMapLoader";
 
-import { CopilotKit, useRenderToolCall } from "@copilotkit/react-core";
-import { CopilotChat } from "@copilotkit/react-ui";
-import { useState, useCallback } from "react";
-import ArtifactPanel from "@/components/ArtifactPanel";
-
-export interface Artifact {
-  id: string;
-  type: "map" | "pie_chart" | "bar_chart" | "table" | "stats" | "property_card";
-  title: string;
-  data: unknown;
-  timestamp: number;
+interface DashboardStats {
+  parcels: {
+    count: number;
+    total_value: number;
+  };
+  dwellings: {
+    total: number;
+    homestead: {
+      count: number;
+      percent: number;
+    };
+    nhs_residential: {
+      count: number;
+      percent: number;
+    };
+  };
+  str_listings: {
+    count: number;
+  };
 }
 
-interface PropertySummary {
-  span: string;
-  address: string | null;
-  owner: string | null;
-  acres: number | null;
-  assessed_total: number | null;
-  property_type: string | null;
-  homestead: boolean;
-  lat: number | null;
-  lng: number | null;
-}
+async function getStats(): Promise<DashboardStats> {
+  const apiUrl = process.env.API_URL || "http://localhost:8999";
 
-interface PropertyStats {
-  total_parcels: number;
-  total_value: number;
-  avg_value: number;
-  homestead_count: number;
-  non_homestead_count: number;
-  homestead_percent: number;
-}
+  try {
+    const res = await fetch(`${apiUrl}/api/stats`, {
+      next: { revalidate: 60 },
+    });
 
-interface PropertyTypeBreakdown {
-  property_type: string;
-  count: number;
-  total_value: number;
-  avg_value: number;
-}
+    if (!res.ok) {
+      throw new Error(`Failed to fetch stats: ${res.status}`);
+    }
 
-function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifact, "id" | "timestamp">) => void }) {
-  // Helper to defer state updates to avoid React render warnings
-  const deferArtifact = useCallback(
-    (artifact: Omit<Artifact, "id" | "timestamp">) => {
-      queueMicrotask(() => onArtifact(artifact));
-    },
-    [onArtifact]
-  );
-
-  // Register tool renderers for each backend tool
-  // These intercept tool call results and create artifacts
-
-  useRenderToolCall({
-    name: "get_property_stats",
-    description: "Get aggregate statistics about properties",
-    render: ({ result, status }) => {
-      if (status === "complete" && result) {
-        const stats = result as PropertyStats;
-
-        // Create stats artifact
-        deferArtifact({
-          type: "stats",
-          title: "Warren Property Statistics",
-          data: {
-            cards: [
-              { label: "Total Properties", value: stats.total_parcels },
-              { label: "Total Assessed Value", value: `$${stats.total_value?.toLocaleString() || 0}` },
-              { label: "Average Property Value", value: `$${stats.avg_value?.toLocaleString() || 0}` },
-              { label: "Primary Residences", value: `${stats.homestead_count} (${stats.homestead_percent}%)` },
-              { label: "Second Homes / Other", value: stats.non_homestead_count },
-            ],
-          },
-        });
-
-        // Create pie chart artifact
-        deferArtifact({
-          type: "pie_chart",
-          title: "Residency Breakdown",
-          data: {
-            data: [
-              { label: "Primary Residence", value: stats.homestead_count, color: "#22c55e" },
-              { label: "Second Home / Other", value: stats.non_homestead_count, color: "#f97316" },
-            ],
-          },
-        });
-      }
-      return null; // Don't render inline
-    },
-  });
-
-  useRenderToolCall({
-    name: "search_properties",
-    description: "Search for properties",
-    render: ({ result, status }) => {
-      if (status === "complete" && result) {
-        const properties = result as PropertySummary[];
-        if (properties.length === 0) return null;
-
-        // Create map artifact if properties have coordinates
-        const mappable = properties.filter((p) => p.lat && p.lng);
-        if (mappable.length > 0) {
-          deferArtifact({
-            type: "map",
-            title: `Found ${properties.length} properties`,
-            data: {
-              markers: mappable.map((p) => ({
-                lat: p.lat,
-                lng: p.lng,
-                label: p.address || p.span,
-                color: p.homestead ? "green" : "orange",
-                popup: `<b>${p.address || "No Address"}</b><br/>
-                        Owner: ${p.owner || "Unknown"}<br/>
-                        Value: ${p.assessed_total ? "$" + p.assessed_total.toLocaleString() : "N/A"}<br/>
-                        ${p.homestead ? "Primary Residence" : "Second Home / Other"}`,
-              })),
-              center: [mappable[0].lat, mappable[0].lng],
-              zoom: 14,
-            },
-          });
-        }
-
-        // Create table artifact
-        deferArtifact({
-          type: "table",
-          title: `Property Search Results (${properties.length})`,
-          data: {
-            columns: ["Address", "Owner", "Value", "Type", "Residence"],
-            rows: properties.map((p) => [
-              p.address || "-",
-              p.owner || "-",
-              p.assessed_total ? `$${p.assessed_total.toLocaleString()}` : "-",
-              p.property_type || "-",
-              p.homestead ? "Primary" : "Second Home",
-            ]),
-          },
-        });
-      }
-      return null;
-    },
-  });
-
-  useRenderToolCall({
-    name: "get_property_type_breakdown",
-    description: "Get breakdown by property type",
-    render: ({ result, status }) => {
-      if (status === "complete" && result) {
-        const breakdown = result as PropertyTypeBreakdown[];
-
-        // Create bar chart
-        deferArtifact({
-          type: "bar_chart",
-          title: "Properties by Type",
-          data: {
-            data: breakdown.map((b) => ({
-              label: b.property_type || "Unknown",
-              value: b.total_value,
-            })),
-            xLabel: "Property Type",
-            yLabel: "Total Value",
-          },
-        });
-
-        // Create table
-        deferArtifact({
-          type: "table",
-          title: "Property Type Details",
-          data: {
-            columns: ["Type", "Count", "Total Value", "Avg Value"],
-            rows: breakdown.map((b) => [
-              b.property_type || "Unknown",
-              b.count,
-              `$${b.total_value.toLocaleString()}`,
-              `$${b.avg_value.toLocaleString()}`,
-            ]),
-          },
-        });
-      }
-      return null;
-    },
-  });
-
-  useRenderToolCall({
-    name: "get_property_by_span",
-    description: "Get property by SPAN ID",
-    render: ({ result, status }) => {
-      if (status === "complete" && result) {
-        const property = result as PropertySummary;
-        if (!property) return null;
-
-        // Create property card
-        deferArtifact({
-          type: "property_card",
-          title: property.address || property.span,
-          data: property,
-        });
-
-        // Create map with single marker
-        if (property.lat && property.lng) {
-          deferArtifact({
-            type: "map",
-            title: property.address || property.span,
-            data: {
-              markers: [
-                {
-                  lat: property.lat,
-                  lng: property.lng,
-                  label: property.address || property.span,
-                  color: property.homestead ? "green" : "orange",
-                  popup: `<b>${property.address || "No Address"}</b>`,
-                },
-              ],
-              center: [property.lat, property.lng],
-              zoom: 16,
-            },
-          });
-        }
-      }
-      return null;
-    },
-  });
-
-  return (
-    <CopilotChat
-      className="h-full"
-      labels={{
-        title: "Warren Property Assistant",
-        initial: "Ask me about properties in Warren, VT! Try: \"How many properties are in Warren?\" or \"Show me properties on Woods Road\"",
-      }}
-    />
-  );
-}
-
-export default function Home() {
-  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
-
-  const addArtifact = useCallback((artifact: Omit<Artifact, "id" | "timestamp">) => {
-    setArtifacts((prev) => [
-      ...prev,
-      {
-        ...artifact,
-        id: `artifact-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        timestamp: Date.now(),
+    return res.json();
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    return {
+      parcels: { count: 1823, total_value: 496000000 },
+      dwellings: {
+        total: 2175,
+        homestead: { count: 431, percent: 19.8 },
+        nhs_residential: { count: 1744, percent: 80.2 },
       },
-    ]);
-  }, []);
+      str_listings: { count: 605 },
+    };
+  }
+}
+
+export const metadata = {
+  title: "Open Valley - Warren Community Intelligence",
+  description:
+    "Understanding Warren, VT through data. Explore housing patterns, property statistics, and community insights.",
+};
+
+export default async function HomePage() {
+  const stats = await getStats();
 
   return (
-    <CopilotKit runtimeUrl="http://localhost:8000/awp">
-      <div className="flex h-screen bg-gray-100">
-        {/* Chat Panel - Left Side */}
-        <div className="w-2/5 border-r border-gray-200 bg-white flex flex-col">
-          <header className="p-4 border-b border-gray-200">
-            <h1 className="text-xl font-semibold text-gray-800">Open Valley</h1>
-            <p className="text-sm text-gray-500">Warren Property Intelligence</p>
-          </header>
-          <div className="flex-1 overflow-hidden">
-            <ChatWithArtifacts onArtifact={addArtifact} />
-          </div>
-        </div>
+    <SiteLayout>
+      <div className="bg-slate-100">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* 3D Map Hero Section */}
+          <section className="mb-10">
+            <WarrenMapLoader
+              homesteadPercent={stats.dwellings.homestead.percent}
+              secondHomePercent={stats.dwellings.nhs_residential.percent}
+              homesteadCount={stats.dwellings.homestead.count}
+              secondHomeCount={stats.dwellings.nhs_residential.count}
+              strCount={stats.str_listings.count}
+            />
+          </section>
 
-        {/* Artifact Panel - Right Side */}
-        <div className="w-3/5 bg-gray-50">
-          <ArtifactPanel artifacts={artifacts} onAddArtifact={addArtifact} />
-        </div>
+          {/* Stats Grid */}
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-slate-900 mb-6">
+              Key Statistics
+            </h2>
+            <StatsGrid stats={stats} />
+          </section>
+
+          {/* Context Section */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            {/* About Warren */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                About Warren, VT
+              </h3>
+              <p className="text-slate-600 mb-4">
+                Warren is a small town in the Mad River Valley with approximately
+                1,800 year-round residents. Home to Sugarbush Resort, Warren has a
+                significant second-home population that shapes its community
+                character and tax base.
+              </p>
+              <ul className="space-y-2 text-sm text-slate-600">
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span>
+                    {stats.parcels.count.toLocaleString()} total parcels with{" "}
+                    {stats.dwellings.total.toLocaleString()} dwelling units
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span>
+                    ~${(stats.parcels.total_value / 1_000_000).toFixed(0)}M total
+                    assessed property value
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  <span>
+                    Only {stats.dwellings.homestead.percent}% of dwellings are
+                    primary residences
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Act 73 Context */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                Vermont Act 73 of 2025
+              </h3>
+              <p className="text-slate-600 mb-4">
+                Vermont&apos;s new dwelling classification law creates three tax
+                categories that will take effect in 2028:
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                  <div className="w-3 h-3 mt-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-green-800">Homestead</p>
+                    <p className="text-sm text-green-700">
+                      Owner&apos;s primary residence (6+ months/year)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
+                  <div className="w-3 h-3 mt-1.5 rounded-full bg-orange-500 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-orange-800">NHS Residential</p>
+                    <p className="text-sm text-orange-700">
+                      Second homes, STRs, vacant dwellings (1-4 units)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                  <div className="w-3 h-3 mt-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-red-800">NHS Non-Residential</p>
+                    <p className="text-sm text-red-700">
+                      Commercial, long-term rentals, 5+ unit buildings
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <Link
+                href="/learn/understanding-act-73"
+                className="inline-block mt-4 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+              >
+                Learn more about Act 73 &rarr;
+              </Link>
+            </div>
+          </section>
+
+          {/* Recent Articles */}
+          <section className="mb-10">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Research &amp; Analysis
+              </h2>
+              <Link
+                href="/learn"
+                className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+              >
+                View all articles &rarr;
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Link
+                href="/learn/why-twenty-percent"
+                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
+              >
+                <h3 className="font-semibold text-slate-900 mb-2">
+                  Why Only 20% of Warren Homes Are Primary Residences
+                </h3>
+                <p className="text-sm text-slate-600">
+                  A data-driven look at Warren&apos;s extreme housing composition
+                  and what it means for the community.
+                </p>
+              </Link>
+              <Link
+                href="/learn/finding-the-strs"
+                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
+              >
+                <h3 className="font-semibold text-slate-900 mb-2">
+                  Finding the STRs: Matching 605 Listings to Parcels
+                </h3>
+                <p className="text-sm text-slate-600">
+                  How we connected short-term rental listings to specific Warren
+                  properties using spatial matching.
+                </p>
+              </Link>
+            </div>
+          </section>
+
+          {/* Call to Action */}
+          <section className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-xl p-8 text-white">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div>
+                <h3 className="text-2xl font-bold mb-2">
+                  Explore Warren&apos;s Community Data
+                </h3>
+                <p className="text-emerald-100">
+                  Chat with our AI assistant to search properties, analyze trends,
+                  and understand local patterns.
+                </p>
+              </div>
+              <Link
+                href="/explore"
+                className="inline-flex items-center gap-2 bg-white text-emerald-700 px-6 py-3 rounded-lg font-semibold hover:bg-emerald-50 transition-colors whitespace-nowrap"
+              >
+                <span className="text-xl">💬</span>
+                Start Exploring
+              </Link>
+            </div>
+          </section>
+        </main>
       </div>
-    </CopilotKit>
+    </SiteLayout>
   );
 }

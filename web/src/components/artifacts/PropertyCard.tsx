@@ -10,6 +10,10 @@ interface PropertyData {
   homestead?: boolean;
   lat?: number;
   lng?: number;
+  // Mailing address intelligence
+  mailing_address?: string;
+  mailing_state?: string;
+  is_out_of_state?: boolean;
 }
 
 interface PropertyCardProps {
@@ -44,6 +48,37 @@ export default function PropertyCard({ data }: PropertyCardProps) {
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase">Owner</p>
             <p className="text-sm text-gray-900">{property.owner}</p>
+          </div>
+        )}
+
+        {/* Mailing Address - Key residency indicator */}
+        {property.mailing_address && (
+          <div className={`p-3 rounded-lg ${
+            property.is_out_of_state
+              ? "bg-amber-50 border border-amber-200"
+              : "bg-gray-50"
+          }`}>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-gray-500 uppercase">
+                Mailing Address
+              </p>
+              {property.is_out_of_state && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                  {property.mailing_state || "Out of State"}
+                </span>
+              )}
+            </div>
+            <p className={`text-sm mt-1 ${
+              property.is_out_of_state ? "text-amber-900" : "text-gray-900"
+            }`}>
+              {property.mailing_address}
+            </p>
+            {property.is_out_of_state && property.homestead && (
+              <p className="text-xs text-amber-700 mt-2 flex items-center gap-1">
+                <span>&#9888;</span>
+                Claims homestead but mailing address is outside Vermont
+              </p>
+            )}
           </div>
         )}
 
