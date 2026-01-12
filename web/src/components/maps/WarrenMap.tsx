@@ -1,163 +1,303 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 
 interface WarrenMapProps {
-  homesteadPercent: number;
-  secondHomePercent: number;
   homesteadCount: number;
   secondHomeCount: number;
   strCount: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GeoJSONFeatureCollection = any;
+
 export default function WarrenMap({
-  homesteadPercent,
-  secondHomePercent,
   homesteadCount,
   secondHomeCount,
   strCount,
 }: WarrenMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const map = useRef<any>(null);
-  const [isClient, setIsClient] = useState(false);
+  const mapRef = useRef<any>(null);
+  const parcelsDataRef = useRef<GeoJSONFeatureCollection>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isClient || !mapContainer.current || map.current) return;
+    // Prevent double initialization in React strict mode
+    if (initialized.current) return;
+    if (!mapContainer.current) return;
+    initialized.current = true;
 
     const initMap = async () => {
       try {
-        // Dynamic import for SSR safety
         const maplibregl = await import("maplibre-gl");
         await import("maplibre-gl/dist/maplibre-gl.css");
 
         const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-
         if (!MAPTILER_KEY) {
           setError("MapTiler API key not configured");
           setIsLoading(false);
           return;
         }
 
-        map.current = new maplibregl.Map({
+        const map = new maplibregl.Map({
           container: mapContainer.current!,
           style: `https://api.maptiler.com/maps/outdoor-v2/style.json?key=${MAPTILER_KEY}`,
-          center: [-72.85, 44.12], // Warren, VT
+          center: [-72.85, 44.12],
           zoom: 12.5,
-          pitch: 50, // 3D tilt
-          bearing: -20, // Slight rotation
+          pitch: 50,
+          bearing: -20,
           maxPitch: 85,
         });
 
-        map.current.on("load", async () => {
-          // Add terrain source for 3D
-          map.current.addSource("terrain", {
+        mapRef.current = map;
+
+        const handleMapLoad = async () => {
+          console.log("Map loaded!");
+
+          // Add 3D terrain
+          map.addSource("terrain", {
             type: "raster-dem",
             url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`,
             tileSize: 256,
           });
+          map.setTerrain({ source: "terrain", exaggeration: 1.5 });
 
-          // Enable 3D terrain
-          map.current.setTerrain({
-            source: "terrain",
-            exaggeration: 1.5,
-          });
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8999";
+          console.log("API URL:", apiUrl);
 
-          // Fetch and add parcel GeoJSON
+          // Load parcels
           try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8999";
-            const response = await fetch(`${apiUrl}/api/parcels/geojson`);
-            if (!response.ok) throw new Error("Failed to fetch parcels");
-            const geojson = await response.json();
+            const parcelsRes = await fetch(`${apiUrl}/api/parcels/geojson`);
+            if (parcelsRes.ok) {
+              const parcelsData = await parcelsRes.json();
+              console.log("Loaded parcels:", parcelsData.features?.length);
 
-            map.current.addSource("parcels", {
-              type: "geojson",
-              data: geojson,
-            });
+              // Store for later lookup in popups
+              parcelsDataRef.current = parcelsData;
 
-            // Choropleth fill layer
-            map.current.addLayer({
-              id: "parcels-fill",
-              type: "fill",
-              source: "parcels",
-              paint: {
-                "fill-color": [
-                  "case",
-                  ["==", ["get", "classification"], "homestead"],
-                  "#22c55e", // green for homestead
-                  "#f97316", // orange for second homes
-                ],
-                "fill-opacity": 0.6,
-              },
-            });
-
-            // Parcel outlines
-            map.current.addLayer({
-              id: "parcels-outline",
-              type: "line",
-              source: "parcels",
-              paint: {
-                "line-color": "#1e293b",
-                "line-width": 0.5,
-              },
-            });
-
-            // Popup on click
-            map.current.on("click", "parcels-fill", (e: { features?: Array<{ properties?: Record<string, unknown> }>; lngLat?: { lng: number; lat: number } }) => {
-              if (!e.features?.length) return;
-              const props = e.features[0].properties;
-              if (!props) return;
-
-              const address = props.E911ADDR || "Unknown";
-              const owner = props.OWNER1 || "Unknown";
-              const value = props.REAL_FLV
-                ? `$${Number(props.REAL_FLV).toLocaleString()}`
-                : "N/A";
-              const status = props.classification === "homestead"
-                ? '<span style="color: #22c55e;">Primary Residence</span>'
-                : '<span style="color: #f97316;">Second Home</span>';
-
-              new maplibregl.Popup()
-                .setLngLat(e.lngLat!)
-                .setHTML(`
-                  <div style="font-family: system-ui; font-size: 13px;">
-                    <strong style="font-size: 14px;">${address}</strong><br/>
-                    <span style="color: #666;">${owner}</span><br/>
-                    <div style="margin-top: 4px;">
-                      ${status}<br/>
-                      Value: ${value}
-                    </div>
-                  </div>
-                `)
-                .addTo(map.current);
-            });
-
-            // Change cursor on hover
-            map.current.on("mouseenter", "parcels-fill", () => {
-              map.current.getCanvas().style.cursor = "pointer";
-            });
-            map.current.on("mouseleave", "parcels-fill", () => {
-              map.current.getCanvas().style.cursor = "";
-            });
+              map.addSource("parcels", { type: "geojson", data: parcelsData });
+              map.addLayer({
+                id: "parcels-fill",
+                type: "fill",
+                source: "parcels",
+                paint: {
+                  "fill-color": [
+                    "case",
+                    ["==", ["get", "classification"], "homestead"],
+                    "#22c55e",
+                    "#f97316",
+                  ],
+                  "fill-opacity": 0.25,
+                },
+              });
+              map.addLayer({
+                id: "parcels-outline",
+                type: "line",
+                source: "parcels",
+                paint: { "line-color": "#1e293b", "line-width": 0.5 },
+              });
+            }
           } catch (err) {
             console.error("Failed to load parcels:", err);
           }
 
+          // Load dwellings
+          try {
+            const dwellingsRes = await fetch(`${apiUrl}/api/dwellings/geojson`);
+            if (dwellingsRes.ok) {
+              const dwellingsData = await dwellingsRes.json();
+              console.log("Loaded dwellings:", dwellingsData.features?.length);
+
+              map.addSource("dwellings", {
+                type: "geojson",
+                data: dwellingsData,
+                cluster: true,
+                clusterMaxZoom: 14,
+                clusterRadius: 50,
+              });
+
+              // Cluster circles
+              map.addLayer({
+                id: "clusters",
+                type: "circle",
+                source: "dwellings",
+                filter: ["has", "point_count"],
+                paint: {
+                  "circle-color": "#a855f7",
+                  "circle-radius": ["step", ["get", "point_count"], 18, 50, 24, 200, 32],
+                  "circle-stroke-width": 3,
+                  "circle-stroke-color": "#fff",
+                },
+              });
+
+              // Cluster labels
+              map.addLayer({
+                id: "cluster-count",
+                type: "symbol",
+                source: "dwellings",
+                filter: ["has", "point_count"],
+                layout: {
+                  "text-field": "{point_count_abbreviated}",
+                  "text-size": 13,
+                },
+                paint: { "text-color": "#fff" },
+              });
+
+              // Individual dwelling points
+              map.addLayer({
+                id: "dwelling-point",
+                type: "circle",
+                source: "dwellings",
+                filter: ["!", ["has", "point_count"]],
+                paint: {
+                  "circle-color": "#a855f7",
+                  "circle-radius": 7,
+                  "circle-stroke-width": 2,
+                  "circle-stroke-color": "#fff",
+                },
+              });
+
+              // --- DWELLING HOVER TOOLTIP ---
+              map.on("mouseenter", "dwelling-point", (e: { features?: Array<{ properties?: Record<string, unknown> }>; point?: { x: number; y: number } }) => {
+                map.getCanvas().style.cursor = "pointer";
+                if (!e.features?.length || !tooltipRef.current) return;
+
+                const props = e.features[0].properties || {};
+                const address = props.address || "Unknown address";
+                const status = props.tax_classification === "HOMESTEAD" ? "Homestead" : "Non-Homestead";
+                const bedrooms = props.bedrooms ? `${props.bedrooms} BR` : "";
+                const unit = props.unit_number ? ` (${props.unit_number})` : "";
+
+                tooltipRef.current.innerHTML = `
+                  <div class="font-semibold">${address}${unit}</div>
+                  <div class="text-slate-300">${status}${bedrooms ? ` · ${bedrooms}` : ""}</div>
+                `;
+                tooltipRef.current.style.display = "block";
+                tooltipRef.current.style.left = `${(e.point?.x || 0) + 10}px`;
+                tooltipRef.current.style.top = `${(e.point?.y || 0) + 10}px`;
+              });
+
+              map.on("mouseleave", "dwelling-point", () => {
+                map.getCanvas().style.cursor = "";
+                if (tooltipRef.current) {
+                  tooltipRef.current.style.display = "none";
+                }
+              });
+
+              // --- DWELLING CLICK POPUP ---
+              map.on("click", "dwelling-point", (e: { features?: Array<{ properties?: Record<string, unknown> }>; lngLat?: { lng: number; lat: number } }) => {
+                if (!e.features?.length || !e.lngLat) return;
+
+                const props = e.features[0].properties || {};
+                const span = props.span as string;
+
+                // Look up parcel data by SPAN
+                let ownerName = "Unknown";
+                let assessedValue = "N/A";
+                let acres = "N/A";
+
+                if (parcelsDataRef.current?.features) {
+                  const parcel = parcelsDataRef.current.features.find(
+                    (f: { properties?: { SPAN?: string } }) => f.properties?.SPAN === span
+                  );
+                  if (parcel?.properties) {
+                    ownerName = parcel.properties.OWNER1 || "Unknown";
+                    assessedValue = parcel.properties.REAL_FLV
+                      ? `$${Number(parcel.properties.REAL_FLV).toLocaleString()}`
+                      : "N/A";
+                    acres = parcel.properties.ACRESGL
+                      ? `${Number(parcel.properties.ACRESGL).toFixed(2)} ac`
+                      : "N/A";
+                  }
+                }
+
+                const address = props.address || "Unknown address";
+                const unit = props.unit_number ? ` (${props.unit_number})` : "";
+                const status = props.tax_classification === "HOMESTEAD"
+                  ? '<span style="color:#22c55e">Homestead</span>'
+                  : '<span style="color:#f97316">Non-Homestead</span>';
+                const bedrooms = props.bedrooms ? `${props.bedrooms}` : "N/A";
+
+                new maplibregl.Popup({ closeButton: true, maxWidth: "280px" })
+                  .setLngLat(e.lngLat)
+                  .setHTML(`
+                    <div style="font-family:system-ui;font-size:13px;line-height:1.5">
+                      <div style="font-weight:600;font-size:14px;margin-bottom:8px">${address}${unit}</div>
+                      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-bottom:8px">
+                        <span style="color:#94a3b8">Status</span><span>${status}</span>
+                        <span style="color:#94a3b8">Bedrooms</span><span>${bedrooms}</span>
+                      </div>
+                      <div style="border-top:1px solid #334155;padding-top:8px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px">
+                        <span style="color:#94a3b8">Owner</span><span>${ownerName}</span>
+                        <span style="color:#94a3b8">Value</span><span>${assessedValue}</span>
+                        <span style="color:#94a3b8">Acres</span><span>${acres}</span>
+                        <span style="color:#94a3b8">SPAN</span><span style="font-size:11px;color:#64748b">${span || "N/A"}</span>
+                      </div>
+                    </div>
+                  `)
+                  .addTo(map);
+              });
+
+              // --- CLUSTER HOVER ---
+              map.on("mouseenter", "clusters", (e: { features?: Array<{ properties?: Record<string, unknown> }>; point?: { x: number; y: number } }) => {
+                map.getCanvas().style.cursor = "pointer";
+                if (!e.features?.length || !tooltipRef.current) return;
+
+                const count = e.features[0].properties?.point_count || 0;
+                tooltipRef.current.innerHTML = `
+                  <div class="font-semibold">${count} Dwellings</div>
+                  <div class="text-slate-400 text-xs">Click to zoom in</div>
+                `;
+                tooltipRef.current.style.display = "block";
+                tooltipRef.current.style.left = `${(e.point?.x || 0) + 10}px`;
+                tooltipRef.current.style.top = `${(e.point?.y || 0) + 10}px`;
+              });
+
+              map.on("mouseleave", "clusters", () => {
+                map.getCanvas().style.cursor = "";
+                if (tooltipRef.current) {
+                  tooltipRef.current.style.display = "none";
+                }
+              });
+
+              // --- CLUSTER CLICK TO ZOOM ---
+              map.on("click", "clusters", (e: { features?: Array<{ properties?: Record<string, unknown>; geometry?: { coordinates: [number, number] } }> }) => {
+                if (!e.features?.length) return;
+                const clusterId = e.features[0].properties?.cluster_id;
+                const source = map.getSource("dwellings");
+                if (source && typeof source.getClusterExpansionZoom === "function") {
+                  source.getClusterExpansionZoom(clusterId, (err: Error | null, zoom: number) => {
+                    if (err) return;
+                    map.easeTo({
+                      center: e.features![0].geometry!.coordinates,
+                      zoom,
+                    });
+                  });
+                }
+              });
+            }
+          } catch (err) {
+            console.error("Failed to load dwellings:", err);
+          }
+
+          console.log("Setting isLoading to false");
+          setIsLoading(false);
+        };
+
+        // Handle load event - add data layers once style is ready
+        map.once("load", handleMapLoad);
+
+        // Hide loading overlay when map becomes idle (all tiles loaded)
+        map.once("idle", () => {
           setIsLoading(false);
         });
 
-        // Add navigation controls
-        map.current.addControl(
-          new maplibregl.NavigationControl({ visualizePitch: true }),
-          "top-right"
-        );
+        map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+
       } catch (err) {
         console.error("Map initialization error:", err);
         setError("Failed to initialize map");
@@ -168,104 +308,70 @@ export default function WarrenMap({
     initMap();
 
     return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
+      initialized.current = false;
     };
-  }, [isClient]);
-
-  if (!isClient) {
-    return (
-      <div className="relative h-[1000px] rounded-2xl bg-slate-800 flex items-center justify-center">
-        <span className="text-slate-400">Loading 3D map...</span>
-      </div>
-    );
-  }
+  }, []);
 
   if (error) {
     return (
-      <div className="relative h-[1000px] rounded-2xl bg-slate-800 flex items-center justify-center">
+      <div className="relative h-[600px] rounded-2xl bg-slate-800 flex items-center justify-center">
         <span className="text-red-400">{error}</span>
       </div>
     );
   }
 
   return (
-    <div className="relative h-[1000px] rounded-2xl overflow-hidden">
+    <div className="relative h-[600px] rounded-2xl overflow-hidden">
       <div ref={mapContainer} className="h-full w-full" />
 
-      {/* Loading overlay */}
+      {/* Hover tooltip */}
+      <div
+        ref={tooltipRef}
+        className="absolute bg-slate-900/95 text-white px-3 py-2 rounded-lg text-sm pointer-events-none z-10 shadow-lg backdrop-blur-sm"
+        style={{ display: "none" }}
+      />
+
       {isLoading && (
         <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-400 mx-auto mb-3"></div>
-            <span className="text-slate-300">Loading 3D terrain...</span>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-400 mx-auto mb-3" />
+            <span className="text-slate-300">Loading map...</span>
           </div>
         </div>
       )}
 
-      {/* Stats overlay - top left */}
-      <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-sm px-5 py-4 rounded-xl text-white max-w-xs">
-        <p className="text-green-400 font-medium uppercase tracking-wider text-xs mb-1">
-          Warren, Vermont
-        </p>
-        <h2 className="text-2xl font-bold leading-tight">
-          <span className="text-green-400">{homesteadPercent}%</span> Primary
-          <br />
-          <span className="text-orange-400">{secondHomePercent}%</span> Second Homes
-        </h2>
-        <p className="text-slate-400 text-sm mt-2">
-          Explore how Vermont&apos;s Act 73 dwelling classifications will reshape
-          property taxation in our mountain community.
-        </p>
+      <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-sm px-5 py-4 rounded-xl text-white">
+        <p className="text-green-400 font-medium uppercase tracking-wider text-xs">Warren, Vermont</p>
       </div>
 
-      {/* Legend - bottom left */}
       <div className="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-sm px-4 py-3 rounded-lg text-white">
-        <div className="flex gap-6 text-sm">
+        <p className="text-xs text-slate-400 mb-2">Legend</p>
+        <div className="flex flex-col gap-2 text-sm">
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded bg-green-500" />
-            <span>Homestead ({homesteadCount.toLocaleString()})</span>
+            <span className="w-4 h-4 rounded-full bg-purple-500 border-2 border-white" />
+            <span>Dwellings ({(homesteadCount + secondHomeCount).toLocaleString()})</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded bg-orange-500" />
-            <span>Second Home ({secondHomeCount.toLocaleString()})</span>
+            <span className="w-4 h-4 rounded bg-green-500/50 border border-slate-700" />
+            <span>Homestead Parcels</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded bg-orange-500/50 border border-slate-700" />
+            <span>Non-Homestead Parcels</span>
           </div>
         </div>
       </div>
 
-      {/* STR callout - bottom right */}
       {strCount > 0 && (
         <div className="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-sm px-4 py-2 rounded-lg">
           <span className="text-red-400 font-bold text-xl">{strCount}</span>
           <span className="text-slate-300 ml-2">Active STR listings</span>
         </div>
       )}
-
-      {/* Action buttons - top right (below nav controls) */}
-      <div className="absolute top-20 right-4 flex flex-col gap-2">
-        <Link
-          href="/explore"
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm shadow-lg"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          Explore with AI
-        </Link>
-        <a
-          href="https://legislature.vermont.gov/bill/status/2026/H.454"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm shadow-lg"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-          Learn About Act 73
-        </a>
-      </div>
     </div>
   );
 }
