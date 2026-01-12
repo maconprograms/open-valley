@@ -2,7 +2,7 @@ import AnimatedTransitionsMapLoader from "@/components/maps/AnimatedTransitionsM
 
 export const metadata = {
   title: "De-Homesteading Warren | Open Valley",
-  description: "Watch as primary residences become second homes, year by year",
+  description: "Watch as homesteads become non-homesteads, year by year",
 };
 
 export default function StoryPage() {
@@ -33,13 +33,13 @@ export default function StoryPage() {
           De-Homesteading Warren
         </h1>
         <p className="text-xl text-slate-400 mb-2">
-          How primary residences become second homes, one transaction at a time
+          How homesteads become non-homesteads, one transaction at a time
         </p>
         <p className="text-slate-500 max-w-2xl mx-auto">
           This animation shows property transfers from 2019-2025, tracking <em>actual status changes</em>:
-          homes that were <span className="text-green-400">re-homesteaded</span> (converted from 2nd home
-          to primary residence) and those that were <span className="text-red-400">de-homesteaded</span>
-          (converted from primary residence to 2nd home).
+          homes that <span className="text-green-400">became homesteads</span> (converted from non-homestead
+          to homestead) and those that <span className="text-red-400">lost homestead status</span>
+          (converted from homestead to non-homestead).
         </p>
       </section>
 
@@ -66,32 +66,32 @@ export default function StoryPage() {
             <div>
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                De-homesteaded (TRUE_LOSS)
+                Lost Homestead (TRUE_LOSS)
               </h3>
               <p className="text-slate-400">
                 A VT seller (was likely homesteading) sells to a buyer who declares &ldquo;secondary residence&rdquo;
-                or &ldquo;non-primary&rdquo; intent. <strong className="text-white">The home converts from primary residence to 2nd home.</strong>
+                or &ldquo;non-primary&rdquo; intent. <strong className="text-white">The home converts from homestead to non-homestead.</strong>
               </p>
             </div>
 
             <div>
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                Re-homesteaded (TRUE_GAIN)
+                Became Homestead (TRUE_GAIN)
               </h3>
               <p className="text-slate-400">
-                An out-of-state seller (was 2nd home) sells to a buyer who declares &ldquo;primary residence&rdquo;.
-                <strong className="text-white"> The home converts from 2nd home to primary residence.</strong>
+                An out-of-state seller (was non-homestead) sells to a buyer who declares &ldquo;primary residence&rdquo;.
+                <strong className="text-white"> The home converts from non-homestead to homestead.</strong>
               </p>
             </div>
 
             <div>
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                Stayed Primary
+                Stayed Homestead
               </h3>
               <p className="text-slate-400">
-                A VT seller (homestead) sells to a buyer who will also use it as primary residence.
+                A VT seller (homestead) sells to a buyer who will also use it as homestead.
                 <span className="text-slate-500"> No net change to Warren&apos;s homestead count.</span>
               </p>
             </div>
@@ -99,10 +99,10 @@ export default function StoryPage() {
             <div>
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-slate-400"></span>
-                Stayed 2nd Home
+                Stayed Non-Homestead
               </h3>
               <p className="text-slate-400">
-                An out-of-state seller (2nd home) sells to another non-primary buyer.
+                An out-of-state seller (non-homestead) sells to another non-homestead buyer.
                 <span className="text-slate-500"> No net change to Warren&apos;s homestead count.</span>
               </p>
             </div>
@@ -123,7 +123,7 @@ export default function StoryPage() {
         <h2 className="text-2xl font-bold text-white mb-6 text-center">Actual Status Changes (2019-2025)</h2>
         <p className="text-slate-400 text-center mb-6 text-sm max-w-2xl mx-auto">
           This table shows only transfers that <em>changed</em> a home&apos;s status — excluding
-          homestead→homestead and 2nd home→2nd home transfers that have no net effect.
+          homestead→homestead and non-homestead→non-homestead transfers that have no net effect.
         </p>
 
         <div className="bg-slate-800 rounded-xl overflow-hidden">
@@ -131,8 +131,8 @@ export default function StoryPage() {
             <thead className="bg-slate-700">
               <tr>
                 <th className="px-4 py-3 text-slate-300 font-medium">Year</th>
-                <th className="px-4 py-3 text-slate-300 font-medium text-right">De-homesteaded</th>
-                <th className="px-4 py-3 text-slate-300 font-medium text-right">Re-homesteaded</th>
+                <th className="px-4 py-3 text-slate-300 font-medium text-right">Lost Homestead</th>
+                <th className="px-4 py-3 text-slate-300 font-medium text-right">Became Homestead</th>
                 <th className="px-4 py-3 text-slate-300 font-medium text-right">Net</th>
                 <th className="px-4 py-3 text-slate-300 font-medium text-center">Trend</th>
               </tr>
@@ -156,7 +156,7 @@ export default function StoryPage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="inline-block px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">
-                      De-homesteading
+                      Losing Homesteads
                     </span>
                   </td>
                 </tr>

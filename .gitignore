@@ -27,9 +27,9 @@ dist/
 .env.local
 .env.*.local
 !.env.example
-api/credentials.json
-api/token.json
-api/scripts/token.json
+credentials.json
+token.json
+scripts/token.json
 
 # Local secrets
 .local/
@@ -49,6 +49,7 @@ data/*.csv
 data/*.json
 data/*.geojson
 data/fpf_emails/
+data/str/
 !data/.gitkeep
 
 # Logs

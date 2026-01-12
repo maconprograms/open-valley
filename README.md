@@ -1,30 +1,16 @@
-# OpenValley
+## Quick Start
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+```bash
+# Start database
+docker compose up -d
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/starling-strategy/v0-open-valley)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/LsZu0R1o5JX)
+# API (terminal 1)
+cd api && uv sync && uv run uvicorn src.main:app --reload --port 8000
 
-## Overview
+# Frontend (terminal 2)
+cd										 web && npm install && npm run dev
+```
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+Open http://localhost:3000 for the chat interface.*0
 
-## Deployment
-
-Your project is live at:
-
-**[https://vercel.com/starling-strategy/v0-open-valley](https://vercel.com/starling-strategy/v0-open-valley)**
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.app/chat/projects/LsZu0R1o5JX](https://v0.app/chat/projects/LsZu0R1o5JX)**
-
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+## 
