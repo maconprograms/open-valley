@@ -8,25 +8,21 @@ Warren, VT faces a housing challenge: only ~20% of dwellings are primary residen
 
 **Core Question**: Who lives here, who owns what, and how is our housing being used?
 
-## Quick Start
-
-```bash
-# Start database
-docker compose up -d
-
-# API (terminal 1)
-cd api && uv sync && uv run uvicorn src.main:app --reload --port 8000
-
-# Frontend (terminal 2)
-cd web && npm install && npm run dev
-```
-
-Open http://localhost:3000 for the chat interface.
-
 ## Key Concepts
 
+This project uses terminology from Vermont Act 73 (2025). See `docs/GLOSSARY.md` for complete definitions.
+
+### Parcel → Dwelling → Classification
+
+**Parcel**: A discrete piece of land identified by SPAN. Warren has 1,823 parcels with various "highest and best uses" (residential, farm, commercial, woodland, seasonal).
+
+**Dwelling**: A subset of parcels where the highest/best use is year-round housing. Per Act 73:
+> A building or part of a building with separate entrance, designed for occupancy by one or more persons, providing living facilities for sleeping, cooking, and sanitary needs, and fit for year-round habitation.
+
+Warren has 2,175 dwellings across 1,823 parcels (some parcels have multiple units).
+
 ### Act 73 Tax Classifications (Vermont 2025)
-- **HOMESTEAD**: Owner's domicile 6+ months/year (education tax rate)
+- **HOMESTEAD**: Owner's domicile 6+ months/year
 - **NHS_RESIDENTIAL**: Second homes, STRs, vacant year-round (higher rate)
 - **NHS_NONRESIDENTIAL**: Long-term rentals, 5+ units, commercial (highest rate)
 
@@ -66,13 +62,14 @@ open-valley/
 
 | Topic | Location |
 |-------|----------|
+| **Act 73 terminology & glossary** | `docs/GLOSSARY.md` |
 | Data sources & APIs | `DATA_SOURCES.md` |
 | Entity relationships | `docs/DATA_ARCHITECTURE.md` |
 | STR matching & confidence | `docs/STR_DATA_CONFIDENCE.md` |
-| Act 73 classification logic | `api/src/schemas.py` (TaxClassification, DwellingBase) |
-| Dwelling inference | `api/scripts/infer_dwellings.py` |
+| Act 73 classification logic | `src/schemas.py` (TaxClassification, DwellingBase) |
+| Dwelling inference | `scripts/infer_dwellings.py` |
 | Ground truth properties | `docs/CALIBRATION_PROPERTIES.md` |
-| Agent tools | `api/src/agent.py` |
+| Agent tools | `src/agent.py` |
 
 ## Database
 

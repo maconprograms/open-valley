@@ -187,8 +187,8 @@ export default function AnimatedTransitionsMap() {
   const transitionColors = {
     TRUE_GAIN: "#22c55e",        // Bright green - re-homesteading!
     TRUE_LOSS: "#ef4444",        // Red - de-homesteading
-    STAYED_HOMESTEAD: "#3b82f6", // Blue - stable primary residence
-    STAYED_NON_HOMESTEAD: "#94a3b8", // Gray - stable second home
+    STAYED_HOMESTEAD: "#3b82f6", // Blue - stable homestead
+    STAYED_NON_HOMESTEAD: "#94a3b8", // Gray - stable non-homestead
     OTHER: "#475569",            // Dark gray - unknown
   };
 
@@ -382,7 +382,7 @@ export default function AnimatedTransitionsMap() {
       <div className="absolute top-4 left-4 bg-slate-900/95 backdrop-blur-sm px-5 py-4 rounded-xl text-white max-w-sm">
         <h2 className="text-xl font-bold mb-1">De-Homesteading Warren</h2>
         <p className="text-slate-400 text-sm">
-          Watch as primary residences become second homes, year by year.
+          Watch as homesteads become non-homesteads, year by year.
         </p>
 
         {/* Play controls */}
@@ -430,14 +430,14 @@ export default function AnimatedTransitionsMap() {
           <div className="flex justify-between items-center">
             <span className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-green-500"></span>
-              Re-homesteaded
+              Became Homestead
             </span>
             <span className="text-green-400 font-bold tabular-nums">+{displayedGains}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-500"></span>
-              De-homesteaded
+              Lost Homestead
             </span>
             <span className="text-red-400 font-bold tabular-nums">-{displayedLosses}</span>
           </div>
@@ -463,19 +463,19 @@ export default function AnimatedTransitionsMap() {
               <div className="text-lg font-bold">{summary.year}</div>
               <div className="text-xs text-slate-400 space-y-0.5">
                 <div className="flex justify-between">
-                  <span>Re-homesteaded:</span>
+                  <span>Became Homestead:</span>
                   <span className="text-green-400 font-medium">+{summary.trueGains}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>De-homesteaded:</span>
+                  <span>Lost Homestead:</span>
                   <span className="text-red-400 font-medium">-{summary.trueLosses}</span>
                 </div>
                 <div className="flex justify-between text-slate-500">
-                  <span>Stayed primary:</span>
+                  <span>Stayed Homestead:</span>
                   <span className="text-blue-400">{summary.stayedHomestead}</span>
                 </div>
                 <div className="flex justify-between text-slate-500">
-                  <span>Stayed 2nd home:</span>
+                  <span>Stayed Non-Homestead:</span>
                   <span className="text-slate-400">{summary.stayedNonHomestead}</span>
                 </div>
               </div>
@@ -500,23 +500,23 @@ export default function AnimatedTransitionsMap() {
               <div className="flex items-start gap-4 bg-slate-700/40 rounded-lg p-3">
                 <span className="w-5 h-5 rounded-full bg-green-500 shadow-lg shadow-green-500/50 flex-shrink-0 mt-0.5"></span>
                 <div>
-                  <div className="font-semibold text-green-400">Re-homesteaded</div>
-                  <div className="text-slate-400 text-sm">Out-of-state seller → Primary residence buyer. A second home became someone's primary home.</div>
+                  <div className="font-semibold text-green-400">Became Homestead</div>
+                  <div className="text-slate-400 text-sm">Out-of-state seller → Homestead buyer. A non-homestead became a homestead.</div>
                 </div>
               </div>
 
               <div className="flex items-start gap-4 bg-slate-700/40 rounded-lg p-3">
                 <span className="w-5 h-5 rounded-full bg-red-500 shadow-lg shadow-red-500/50 flex-shrink-0 mt-0.5"></span>
                 <div>
-                  <div className="font-semibold text-red-400">De-homesteaded</div>
-                  <div className="text-slate-400 text-sm">Vermont seller → Non-primary buyer. A primary residence became a second home.</div>
+                  <div className="font-semibold text-red-400">Lost Homestead</div>
+                  <div className="text-slate-400 text-sm">Vermont seller → Non-homestead buyer. A homestead became a non-homestead.</div>
                 </div>
               </div>
 
               <div className="flex items-start gap-4 bg-slate-700/30 rounded-lg p-3">
                 <span className="w-4 h-4 rounded-full bg-blue-500 flex-shrink-0 mt-0.5"></span>
                 <div>
-                  <div className="font-medium text-blue-400">Stayed Primary</div>
+                  <div className="font-medium text-blue-400">Stayed Homestead</div>
                   <div className="text-slate-500 text-sm">VT seller → Primary buyer. No net change.</div>
                 </div>
               </div>
@@ -524,7 +524,7 @@ export default function AnimatedTransitionsMap() {
               <div className="flex items-start gap-4 bg-slate-700/30 rounded-lg p-3">
                 <span className="w-4 h-4 rounded-full bg-slate-400 flex-shrink-0 mt-0.5"></span>
                 <div>
-                  <div className="font-medium text-slate-300">Stayed Second Home</div>
+                  <div className="font-medium text-slate-300">Stayed Non-Homestead</div>
                   <div className="text-slate-500 text-sm">Out-of-state seller → Non-primary buyer. No net change.</div>
                 </div>
               </div>
@@ -557,13 +557,13 @@ export default function AnimatedTransitionsMap() {
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="bg-slate-700/50 rounded-xl p-4">
                 <div className="text-4xl font-bold text-green-400">+{displayedGains}</div>
-                <div className="text-slate-400 text-sm">Re-homesteaded</div>
-                <div className="text-slate-500 text-xs mt-1">2nd home → Primary residence</div>
+                <div className="text-slate-400 text-sm">Became Homestead</div>
+                <div className="text-slate-500 text-xs mt-1">Non-homestead → Homestead</div>
               </div>
               <div className="bg-slate-700/50 rounded-xl p-4">
                 <div className="text-4xl font-bold text-red-400">-{displayedLosses}</div>
-                <div className="text-slate-400 text-sm">De-homesteaded</div>
-                <div className="text-slate-500 text-xs mt-1">Primary residence → 2nd home</div>
+                <div className="text-slate-400 text-sm">Lost Homestead</div>
+                <div className="text-slate-500 text-xs mt-1">Homestead → Non-homestead</div>
               </div>
             </div>
 
@@ -571,11 +571,11 @@ export default function AnimatedTransitionsMap() {
               <div className={`text-5xl font-bold ${runningNet >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {runningNet >= 0 ? '+' : ''}{runningNet}
               </div>
-              <div className="text-slate-300 mt-2">Net Change in Primary Residences</div>
+              <div className="text-slate-300 mt-2">Net Change in Homesteads</div>
               <p className="text-slate-500 text-sm mt-4 max-w-sm mx-auto">
                 {runningNet < 0
-                  ? `Warren lost a net ${Math.abs(runningNet)} primary residences as homesteads were sold to second-home buyers faster than second homes became primary residences.`
-                  : `Warren gained ${runningNet} net primary residences.`
+                  ? `Warren lost a net ${Math.abs(runningNet)} homesteads as owner-occupied homes were sold to non-homestead buyers faster than non-homesteads became homesteads.`
+                  : `Warren gained ${runningNet} net homesteads.`
                 }
               </p>
             </div>
@@ -596,19 +596,19 @@ export default function AnimatedTransitionsMap() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="w-4 h-4 rounded-full bg-green-500 shadow-lg shadow-green-500/50"></span>
-            <span>Re-homesteaded (2nd home → primary)</span>
+            <span>Became Homestead (non-homestead → homestead)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-4 h-4 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></span>
-            <span>De-homesteaded (primary → 2nd home)</span>
+            <span>Lost Homestead (homestead → non-homestead)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-            <span className="text-slate-400">Stayed primary residence</span>
+            <span className="text-slate-400">Stayed Homestead</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-slate-400"></span>
-            <span className="text-slate-400">Stayed second home</span>
+            <span className="text-slate-400">Stayed Non-Homestead</span>
           </div>
         </div>
       </div>

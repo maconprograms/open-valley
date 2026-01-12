@@ -13,8 +13,6 @@ const WarrenMap = dynamic(() => import("./WarrenMap"), {
 });
 
 interface WarrenMapLoaderProps {
-  homesteadPercent: number;
-  secondHomePercent: number;
   homesteadCount: number;
   secondHomeCount: number;
   strCount: number;

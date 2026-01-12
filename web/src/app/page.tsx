@@ -67,8 +67,6 @@ export default async function HomePage() {
           {/* 3D Map Hero Section */}
           <section className="mb-10">
             <WarrenMapLoader
-              homesteadPercent={stats.dwellings.homestead.percent}
-              secondHomePercent={stats.dwellings.nhs_residential.percent}
               homesteadCount={stats.dwellings.homestead.count}
               secondHomeCount={stats.dwellings.nhs_residential.count}
               strCount={stats.str_listings.count}
