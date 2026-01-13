@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import type { Artifact } from "@/app/page";
+import type { Artifact } from "@/app/explore/page";
 import ChartArtifact from "./artifacts/ChartArtifact";
 import TableArtifact from "./artifacts/TableArtifact";
 import StatsArtifact from "./artifacts/StatsArtifact";
