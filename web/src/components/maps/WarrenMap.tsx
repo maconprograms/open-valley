@@ -23,7 +23,24 @@ export default function WarrenMap({
   const parcelsDataRef = useRef<GeoJSONFeatureCollection>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDwellings, setShowDwellings] = useState(true);
   const initialized = useRef(false);
+
+  const toggleDwellings = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const newVisibility = !showDwellings;
+    const visibility = newVisibility ? "visible" : "none";
+
+    ["clusters", "cluster-count", "dwelling-point"].forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", visibility);
+      }
+    });
+
+    setShowDwellings(newVisibility);
+  };
 
   useEffect(() => {
     // Prevent double initialization in React strict mode
@@ -34,6 +51,7 @@ export default function WarrenMap({
     const initMap = async () => {
       try {
         const maplibregl = await import("maplibre-gl");
+        // @ts-expect-error - CSS module has no types
         await import("maplibre-gl/dist/maplibre-gl.css");
 
         const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -225,17 +243,17 @@ export default function WarrenMap({
                 new maplibregl.Popup({ closeButton: true, maxWidth: "280px" })
                   .setLngLat(e.lngLat)
                   .setHTML(`
-                    <div style="font-family:system-ui;font-size:13px;line-height:1.5">
-                      <div style="font-weight:600;font-size:14px;margin-bottom:8px">${address}${unit}</div>
+                    <div style="font-family:system-ui;font-size:13px;line-height:1.5;color:#1e293b">
+                      <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#0f172a">${address}${unit}</div>
                       <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-bottom:8px">
-                        <span style="color:#94a3b8">Status</span><span>${status}</span>
-                        <span style="color:#94a3b8">Bedrooms</span><span>${bedrooms}</span>
+                        <span style="color:#64748b;font-weight:500">Status</span><span>${status}</span>
+                        <span style="color:#64748b;font-weight:500">Bedrooms</span><span>${bedrooms}</span>
                       </div>
-                      <div style="border-top:1px solid #334155;padding-top:8px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px">
-                        <span style="color:#94a3b8">Owner</span><span>${ownerName}</span>
-                        <span style="color:#94a3b8">Value</span><span>${assessedValue}</span>
-                        <span style="color:#94a3b8">Acres</span><span>${acres}</span>
-                        <span style="color:#94a3b8">SPAN</span><span style="font-size:11px;color:#64748b">${span || "N/A"}</span>
+                      <div style="border-top:1px solid #e2e8f0;padding-top:8px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px">
+                        <span style="color:#64748b;font-weight:500">Owner</span><span>${ownerName}</span>
+                        <span style="color:#64748b;font-weight:500">Value</span><span>${assessedValue}</span>
+                        <span style="color:#64748b;font-weight:500">Acres</span><span>${acres}</span>
+                        <span style="color:#64748b;font-weight:500">SPAN</span><span style="font-size:11px;color:#475569">${span || "N/A"}</span>
                       </div>
                     </div>
                   `)
@@ -297,6 +315,7 @@ export default function WarrenMap({
         });
 
         map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+        map.addControl(new maplibregl.FullscreenControl(), "top-right");
 
       } catch (err) {
         console.error("Map initialization error:", err);
@@ -351,10 +370,22 @@ export default function WarrenMap({
       <div className="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-sm px-4 py-3 rounded-lg text-white">
         <p className="text-xs text-slate-400 mb-2">Legend</p>
         <div className="flex flex-col gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-purple-500 border-2 border-white" />
-            <span>Dwellings ({(homesteadCount + secondHomeCount).toLocaleString()})</span>
-          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showDwellings}
+              onChange={toggleDwellings}
+              className="sr-only"
+            />
+            <span className={`w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${showDwellings ? 'bg-purple-500' : 'bg-slate-600'}`}>
+              {showDwellings && (
+                <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </span>
+            <span>Dwellings</span>
+          </label>
           <div className="flex items-center gap-2">
             <span className="w-4 h-4 rounded bg-green-500/50 border border-slate-700" />
             <span>Homestead Parcels</span>
@@ -366,12 +397,6 @@ export default function WarrenMap({
         </div>
       </div>
 
-      {strCount > 0 && (
-        <div className="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-sm px-4 py-2 rounded-lg">
-          <span className="text-red-400 font-bold text-xl">{strCount}</span>
-          <span className="text-slate-300 ml-2">Active STR listings</span>
-        </div>
-      )}
     </div>
   );
 }
