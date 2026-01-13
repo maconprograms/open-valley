@@ -111,7 +111,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
           },
         });
       }
-      return null; // Don't render inline
+      return <></>; // Don't render inline
     },
   });
 
@@ -121,7 +121,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
     render: ({ result, status }) => {
       if (status === "complete" && result) {
         const properties = result as PropertySummary[];
-        if (properties.length === 0) return null;
+        if (properties.length === 0) return <></>;
 
         // Create map artifact if properties have coordinates
         const mappable = properties.filter((p) => p.lat && p.lng);
@@ -162,7 +162,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
           },
         });
       }
-      return null;
+      return <></>;
     },
   });
 
@@ -202,7 +202,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
           },
         });
       }
-      return null;
+      return <></>;
     },
   });
 
@@ -245,7 +245,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
           },
         });
       }
-      return null;
+      return <></>;
     },
   });
 
@@ -255,7 +255,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
     render: ({ result, status }) => {
       if (status === "complete" && result) {
         const property = result as PropertySummary;
-        if (!property) return null;
+        if (!property) return <></>;
 
         // Create property card
         deferArtifact({
@@ -285,7 +285,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
           });
         }
       }
-      return null;
+      return <></>;
     },
   });
 
@@ -316,7 +316,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
           },
         });
       }
-      return null;
+      return <></>;
     },
   });
 
@@ -326,7 +326,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
     render: ({ result, status }) => {
       if (status === "complete" && result) {
         const dwellings = result as DwellingSummary[];
-        if (dwellings.length === 0) return null;
+        if (dwellings.length === 0) return <></>;
 
         // Create map artifact if dwellings have coordinates
         const mappable = dwellings.filter((d) => d.lat && d.lng);
@@ -372,7 +372,7 @@ function ChatWithArtifacts({ onArtifact }: { onArtifact: (artifact: Omit<Artifac
           },
         });
       }
-      return null;
+      return <></>;
     },
   });
 
