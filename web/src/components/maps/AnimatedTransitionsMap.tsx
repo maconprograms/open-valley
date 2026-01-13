@@ -51,6 +51,165 @@ interface YearSummary {
   runningTotal: number;
 }
 
+// Line chart component for homestead rate over time
+function HomesteadRateChart({ yearSummaries }: { yearSummaries: YearSummary[] }) {
+  // Warren has 1,823 parcels, current rate is 16.4% (≈299 homesteads)
+  // Working backwards: 299 + 109 net loss = 408 homesteads in early 2019
+  const TOTAL_PARCELS = 1823;
+  const CURRENT_HOMESTEADS = 299; // 16.4% of 1823
+  const TOTAL_NET_LOSS = -109;
+  const START_HOMESTEADS = CURRENT_HOMESTEADS - TOTAL_NET_LOSS; // 408
+
+  // Calculate homestead count and rate for each year end
+  const dataPoints = yearSummaries.map((summary, index) => {
+    // Calculate cumulative net change up to and including this year
+    const cumulativeNet = yearSummaries
+      .slice(0, index + 1)
+      .reduce((acc, s) => acc + s.net, 0);
+    const homesteads = START_HOMESTEADS + cumulativeNet;
+    const rate = (homesteads / TOTAL_PARCELS) * 100;
+    return { year: summary.year, homesteads, rate };
+  });
+
+  // Add starting point (beginning of 2019)
+  const allPoints = [
+    { year: 2018.5, homesteads: START_HOMESTEADS, rate: (START_HOMESTEADS / TOTAL_PARCELS) * 100 },
+    ...dataPoints
+  ];
+
+  // Chart dimensions
+  const width = 400;
+  const height = 200;
+  const padding = { top: 20, right: 40, bottom: 40, left: 50 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  // Scales
+  const minYear = 2018.5;
+  const maxYear = 2025;
+  const minRate = Math.floor(Math.min(...allPoints.map(p => p.rate)) - 1);
+  const maxRate = Math.ceil(Math.max(...allPoints.map(p => p.rate)) + 1);
+
+  const xScale = (year: number) => padding.left + ((year - minYear) / (maxYear - minYear)) * chartWidth;
+  const yScale = (rate: number) => padding.top + ((maxRate - rate) / (maxRate - minRate)) * chartHeight;
+
+  // Generate path
+  const pathD = allPoints
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.year)} ${yScale(p.rate)}`)
+    .join(' ');
+
+  // Generate area path (for gradient fill)
+  const areaD = `${pathD} L ${xScale(allPoints[allPoints.length - 1].year)} ${yScale(minRate)} L ${xScale(allPoints[0].year)} ${yScale(minRate)} Z`;
+
+  return (
+    <div className="bg-slate-700/50 rounded-xl p-4">
+      <div className="text-sm text-slate-400 mb-2 text-center">Homestead Rate Over Time</div>
+      <svg width={width} height={height} className="mx-auto">
+        <defs>
+          <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.05" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines */}
+        {[minRate, minRate + (maxRate - minRate) / 2, maxRate].map(rate => (
+          <g key={rate}>
+            <line
+              x1={padding.left}
+              y1={yScale(rate)}
+              x2={width - padding.right}
+              y2={yScale(rate)}
+              stroke="#475569"
+              strokeDasharray="4,4"
+            />
+            <text
+              x={padding.left - 8}
+              y={yScale(rate)}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fill="#94a3b8"
+              fontSize="11"
+            >
+              {rate.toFixed(0)}%
+            </text>
+          </g>
+        ))}
+
+        {/* Year labels */}
+        {[2019, 2021, 2023, 2025].map(year => (
+          <text
+            key={year}
+            x={xScale(year)}
+            y={height - padding.bottom + 20}
+            textAnchor="middle"
+            fill="#94a3b8"
+            fontSize="11"
+          >
+            {year}
+          </text>
+        ))}
+
+        {/* Area fill */}
+        <path d={areaD} fill="url(#areaGradient)" />
+
+        {/* Line */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke="#ef4444"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Data points */}
+        {allPoints.map((p, i) => (
+          <g key={i}>
+            <circle
+              cx={xScale(p.year)}
+              cy={yScale(p.rate)}
+              r={i === 0 ? 4 : 6}
+              fill={i === 0 ? "#94a3b8" : "#ef4444"}
+              stroke="#1e293b"
+              strokeWidth="2"
+            />
+            {/* Rate label on last point */}
+            {i === allPoints.length - 1 && (
+              <text
+                x={xScale(p.year) + 8}
+                y={yScale(p.rate)}
+                dominantBaseline="middle"
+                fill="#ef4444"
+                fontSize="12"
+                fontWeight="bold"
+              >
+                {p.rate.toFixed(1)}%
+              </text>
+            )}
+            {/* Rate label on first point */}
+            {i === 0 && (
+              <text
+                x={xScale(p.year) - 8}
+                y={yScale(p.rate)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fill="#94a3b8"
+                fontSize="12"
+              >
+                {p.rate.toFixed(1)}%
+              </text>
+            )}
+          </g>
+        ))}
+      </svg>
+      <div className="text-xs text-slate-500 text-center mt-2">
+        Percentage of Warren's {TOTAL_PARCELS.toLocaleString()} parcels with homestead filings
+      </div>
+    </div>
+  );
+}
+
 export default function AnimatedTransitionsMap() {
   const mapContainer = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,6 +264,7 @@ export default function AnimatedTransitionsMap() {
     const initMap = async () => {
       try {
         const maplibregl = await import("maplibre-gl");
+        // @ts-expect-error - CSS module has no types
         await import("maplibre-gl/dist/maplibre-gl.css");
 
         const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -549,8 +709,8 @@ export default function AnimatedTransitionsMap() {
 
       {/* Final summary overlay */}
       {showFinalSummary && (
-        <div className="absolute inset-0 bg-slate-900/90 flex items-center justify-center">
-          <div className="bg-slate-800 rounded-2xl p-8 max-w-lg text-center text-white">
+        <div className="absolute inset-0 bg-slate-900/90 flex items-center justify-center overflow-y-auto py-8">
+          <div className="bg-slate-800 rounded-2xl p-8 max-w-xl text-center text-white">
             <h3 className="text-2xl font-bold mb-2">2019 — 2025</h3>
             <p className="text-slate-400 mb-6">Seven years of actual homestead status changes</p>
 
@@ -567,7 +727,7 @@ export default function AnimatedTransitionsMap() {
               </div>
             </div>
 
-            <div className="border-t border-slate-700 pt-6">
+            <div className="border-t border-slate-700 pt-6 mb-6">
               <div className={`text-5xl font-bold ${runningNet >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {runningNet >= 0 ? '+' : ''}{runningNet}
               </div>
@@ -579,6 +739,11 @@ export default function AnimatedTransitionsMap() {
                 }
               </p>
             </div>
+
+            {/* Homestead rate line chart */}
+            {yearSummaries.length > 0 && (
+              <HomesteadRateChart yearSummaries={yearSummaries} />
+            )}
 
             <button
               onClick={resetAnimation}
