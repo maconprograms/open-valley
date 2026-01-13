@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+api/.venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Node.js
+node_modules/
+web/node_modules/
+web/.next/
+.npm
+*.log
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Environment and secrets
+.env
+.env.*
+*.local
+api/.env
+
+# Git
+.git/
+.gitignore
+
+# Docker (exclude all but prod Dockerfile)
+docker-compose*.yml
+Dockerfile.db
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Data files (too large for container)
+data/
+*.csv
+*.pdf
+
+# Exclude data JSON files but not config files
+data/*.json
+
+# Tests
+tests/
+*_test.py
+test_*.py
+
+# Development files
+.serena/
+.python-version
+scripts/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
