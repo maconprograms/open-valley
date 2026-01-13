@@ -127,12 +127,13 @@ export default function STRReviewMap({
         closeOnClick: false,
       });
 
-      map.current.on("mouseenter", "str-listings-circles", (e: { features?: Array<{ properties?: Record<string, unknown> }> }) => {
+      map.current.on("mouseenter", "str-listings-circles", (e: { features?: Array<{ properties?: Record<string, unknown>; geometry?: { coordinates: [number, number] } }> }) => {
         if (!e.features?.length) return;
         const props = e.features[0].properties;
-        if (!props) return;
+        const geometry = e.features[0].geometry;
+        if (!props || !geometry) return;
 
-        const coords = (e.features[0].geometry as { coordinates: [number, number] }).coordinates.slice() as [number, number];
+        const coords = geometry.coordinates.slice() as [number, number];
         const name = props.name || "Unnamed STR";
         const platform = props.platform || "unknown";
         const bedrooms = props.bedrooms ? `${props.bedrooms} BR` : "";
