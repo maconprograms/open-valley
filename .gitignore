@@ -48,9 +48,13 @@ Thumbs.db
 data/*.csv
 data/*.json
 data/*.geojson
+data/*.pdf
 data/fpf_emails/
 data/str/
 !data/.gitkeep
+
+# Tool artifacts
+.serena/
 
 # Logs
 *.log
