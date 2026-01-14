@@ -7,6 +7,21 @@ interface DashboardStats {
   parcels: {
     count: number;
     total_value: number;
+    breakdown?: {
+      total: number;
+      homestead: {
+        count: number;
+        percent: number;
+      };
+      nhs_residential: {
+        count: number;
+        percent: number;
+      };
+      other: {
+        count: number;
+        percent: number;
+      };
+    };
   };
   dwellings: {
     total: number;
@@ -40,7 +55,16 @@ async function getStats(): Promise<DashboardStats> {
   } catch (error) {
     console.error("Error fetching stats:", error);
     return {
-      parcels: { count: 1823, total_value: 496000000 },
+      parcels: {
+        count: 1823,
+        total_value: 496000000,
+        breakdown: {
+          total: 1823,
+          homestead: { count: 450, percent: 24.7 },
+          nhs_residential: { count: 615, percent: 33.7 },
+          other: { count: 758, percent: 41.6 },
+        },
+      },
       dwellings: {
         total: 2175,
         homestead: { count: 431, percent: 19.8 },
@@ -194,7 +218,7 @@ export default async function HomePage() {
                 </div>
               </div>
               <Link
-                href="/learn/understanding-act-73"
+                href="/learn/glossary"
                 className="inline-block mt-4 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
               >
                 Learn more about Act 73 &rarr;
@@ -202,68 +226,6 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* Recent Articles */}
-          <section className="mb-10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">
-                Research &amp; Analysis
-              </h2>
-              <Link
-                href="/learn"
-                className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
-              >
-                View all articles &rarr;
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Link
-                href="/learn/why-twenty-percent"
-                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <h3 className="font-semibold text-slate-900 mb-2">
-                  Why Only 20% of Warren Homes Are Primary Residences
-                </h3>
-                <p className="text-sm text-slate-600">
-                  A data-driven look at Warren&apos;s extreme housing composition
-                  and what it means for the community.
-                </p>
-              </Link>
-              <Link
-                href="/learn/finding-the-strs"
-                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <h3 className="font-semibold text-slate-900 mb-2">
-                  Finding the STRs: Matching 605 Listings to Parcels
-                </h3>
-                <p className="text-sm text-slate-600">
-                  How we connected short-term rental listings to specific Warren
-                  properties using spatial matching.
-                </p>
-              </Link>
-            </div>
-          </section>
-
-          {/* Call to Action */}
-          <section className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-xl p-8 text-white">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div>
-                <h3 className="text-2xl font-bold mb-2">
-                  Explore Warren&apos;s Community Data
-                </h3>
-                <p className="text-emerald-100">
-                  Chat with our AI assistant to search properties, analyze trends,
-                  and understand local patterns.
-                </p>
-              </div>
-              <Link
-                href="/explore"
-                className="inline-flex items-center gap-2 bg-white text-emerald-700 px-6 py-3 rounded-lg font-semibold hover:bg-emerald-50 transition-colors whitespace-nowrap"
-              >
-                <span className="text-xl">💬</span>
-                Start Exploring
-              </Link>
-            </div>
-          </section>
         </main>
       </div>
     </SiteLayout>

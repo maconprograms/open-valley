@@ -1,199 +1,57 @@
 ---
-title: "Glossary of Terms"
+title: "Glossary"
 date: "2026-01-12"
-description: "Key definitions for Warren housing data, informed by Vermont's Act 73 classification framework."
-tags: ["glossary", "methodology", "definitions"]
+description: "Key terms used in Open Valley, aligned with Vermont Act 73."
+tags: ["glossary", "definitions"]
 author: "Open Valley Team"
----
-
-# Glossary of Terms
-
-Vermont's Act 73 (2025) created the state's first systematic framework for classifying residential properties. This glossary explains the terms we use and how they connect to Act 73's definitions.
-
-## The Core Question
-
-Everything in our data model centers on one question:
-
-> **Does someone live here full-time?**
-
-This single question determines whether a dwelling adds to Warren's housing supply or sits outside it. A town where only 20% of dwellings house year-round residents faces different challenges than one where 80% do.
-
 ---
 
 ## Land & Property
 
-### Parcel
+**Parcel** - A piece of land with a unique SPAN (School Property Account Number). Warren has 1,823 parcels.
 
-A discrete piece of land identified by a unique **SPAN** (School Property Account Number).
+**SPAN** - 13-character identifier for Vermont parcels (e.g., "617-208-10293").
 
-- Each parcel has a unique 13-character SPAN (e.g., "617-208-10293")
-- Contains address, acreage, and assessed value
-- One parcel can contain multiple dwellings
-- **Source**: Vermont Grand List
+**Dwelling** - A housing unit fit for year-round habitation with separate entrance, sleeping, cooking, and sanitary facilities. One parcel can have multiple dwellings.
 
-Warren has **1,823 parcels**.
+**ADU** - Accessory Dwelling Unit. A secondary dwelling on a parcel (apartment above garage, in-law suite).
 
-### Dwelling
+## Act 73 Classifications
 
-A housing unit fit for year-round habitation. Act 73 defines a dwelling as:
+**HOMESTEAD** - Owner's primary residence for 6+ months per year. Requires annual homestead declaration. Lower tax rate.
 
-> A building or part of a building with separate entrance, designed for occupancy by one or more persons, providing living facilities for sleeping, cooking, and sanitary needs, and fit for year-round habitation.
+**NHS_RESIDENTIAL** - Non-Homestead Residential. Second homes, vacation properties, short-term rentals (1-4 units). Higher tax rate.
 
-**Requirements** (all must be met):
-- Separate entrance (its own ingress/egress)
-- Sleeping facilities
-- Cooking facilities
-- Sanitary facilities (bathroom)
-- Year-round habitable (insulated, heated)
+**NHS_NONRESIDENTIAL** - Non-Homestead Non-Residential. Long-term rentals, 5+ unit buildings, commercial properties. Highest tax rate.
 
-**What IS a dwelling**: Single-family home, condo, apartment (1-4 units), ADU, mobile home, townhouse
+## Occupancy Types
 
-**What is NOT a dwelling**: Seasonal camp without winterization, hotel room, 5+ unit building (classified differently)
+**Full-time residence** - Someone lives here year-round (owner or tenant).
 
-Warren has **2,175 dwellings** across 1,823 parcels (some parcels have multiple units).
+**Second home** - Owner visits occasionally; sits empty otherwise.
 
----
+**Short-term rental (STR)** - Rented for stays under 30 days (Airbnb, VRBO).
 
-## Occupancy: Who Lives Here?
+**Long-term rental** - Rented 30+ days at a time, 6+ months per year.
 
-### DwellingUse
+## Data Sources
 
-The primary way we classify dwellings is by **occupancy pattern** - does someone live here year-round?
+**Grand List** - Vermont's official property database. Source for parcels, assessed values, homestead status.
 
-| DwellingUse | What it means | In housing supply? |
-|-------------|---------------|-------------------|
-| **FULL_TIME_RESIDENCE** | Someone lives here year-round (owner or tenant) | Yes |
-| **SHORT_TERM_RENTAL** | Primarily used for visitors (under 30 day stays) | No |
-| **SECOND_HOME** | Owner visits occasionally, sits empty otherwise | No |
-| **VACANT** | Year-round habitable but empty | No |
+**DESCPROP** - Grand List field describing what's on a parcel. "& DWL" indicates a dwelling.
 
-### is_owner_occupied
+**AirROI** - Commercial service aggregating Airbnb/VRBO listings with coordinates.
 
-For dwellings where someone lives full-time, we track whether it's the **owner** or a **tenant**:
+**PTTR** - Property Transfer Tax Return. Filed when property changes hands.
 
-- `is_owner_occupied = true` → Owner lives here
-- `is_owner_occupied = false` → Tenant lives here (long-term rental)
-
-This distinction matters for tax classification.
-
----
-
-## STR Listings: Separate Data
-
-**Key insight**: STR listings are data about rental activity, not a dwelling classification.
-
-Any dwelling can have an Airbnb or VRBO listing attached. The listing doesn't change the dwelling's primary use:
-
-| DwellingUse | Has STR Listing? | What it means |
-|-------------|------------------|---------------|
-| FULL_TIME_RESIDENCE | Yes | Homeowner occasionally rents (holidays, ski week) |
-| FULL_TIME_RESIDENCE | No | Just lives there |
-| SHORT_TERM_RENTAL | Yes | Dedicated STR - this IS the primary use |
-| SECOND_HOME | Yes | Rented when owner not visiting |
-| SECOND_HOME | No | Just sits empty |
-
-**Example**: A family lists their Warren home on Airbnb for 2 weeks over holidays:
-- `use = FULL_TIME_RESIDENCE` (they live here)
-- `is_owner_occupied = true` (owner lives here)
-- `has_str_listing = true` (they have a listing)
-- Tax classification → **HOMESTEAD** (owner lives here 6+ months)
-
-Warren has **605 STR listings** from Airbnb and VRBO.
-
----
-
-## Tax Classifications (Act 73)
-
-Vermont Act 73 creates three tax classifications. These are **derived** from DwellingUse + is_owner_occupied:
-
-### HOMESTEAD
-
-Owner's primary residence for 6+ months per year.
-
-- Must file annual Homestead Declaration by October 15
-- Only ONE homestead per person
-- LLCs, corporations, and most trusts cannot claim homestead
-
-**In our model**: `FULL_TIME_RESIDENCE` + `is_owner_occupied = true`
-
-### NHS_RESIDENTIAL (Non-Homestead Residential)
-
-Second homes, vacation properties, and short-term rentals (1-4 units).
-
-- Dwellings where no one lives year-round
-- Higher tax rate than homestead (rate TBD by Legislature)
-
-**In our model**: `SHORT_TERM_RENTAL`, `SECOND_HOME`, or `VACANT`
-
-### NHS_NONRESIDENTIAL (Non-Homestead Non-Residential)
-
-Commercial properties, long-term rentals, and 5+ unit buildings.
-
-- Includes traditional landlord-tenant rentals
-- Highest tax rate (rate TBD)
-
-**In our model**: `FULL_TIME_RESIDENCE` + `is_owner_occupied = false` (tenant lives there)
-
-### Derivation Table
-
-| DwellingUse | is_owner_occupied | Tax Classification |
-|-------------|-------------------|-------------------|
-| FULL_TIME_RESIDENCE | true | HOMESTEAD |
-| FULL_TIME_RESIDENCE | false | NHS_NONRESIDENTIAL |
-| SHORT_TERM_RENTAL | - | NHS_RESIDENTIAL |
-| SECOND_HOME | - | NHS_RESIDENTIAL |
-| VACANT | - | NHS_RESIDENTIAL |
-
----
-
-## What Does "Full-Time" Mean?
-
-Different policies use different thresholds:
-
-| Policy | Threshold | Meaning |
-|--------|-----------|---------|
-| **Vermont Homestead** | 6+ months/year (183+ days) | Owner must live here as domicile |
-| **Long-term rental** | Rented 30+ days/stay, 6+ months/year | Tenant lives here |
-| **Short-term rental** | Stays under 30 days | Visitors, not residents |
-
-We use the **6-month threshold** (183 days) to align with Vermont's homestead definition.
-
-### Signals We Use
-
-| Signal | Source | What it tells us |
-|--------|--------|------------------|
-| Homestead declaration filed | Grand List | Owner lives here 6+ months |
-| Landlord certificate filed | Tax Dept | Tenant lives here |
-| Owner mailing = property address | Grand List | Owner likely lives here |
-| Owner state ≠ VT | Grand List | Owner lives out of state |
-| STR listing matched | AirROI | Dwelling has STR activity |
-
----
-
-## Implementation Timeline
-
-Act 73 phases in over several years:
+## Timeline
 
 | Date | Milestone |
 |------|-----------|
-| July 2025 | Act 73 signed into law |
-| Jan-May 2026 | Legislature defines "dwelling unit" |
-| June 2026-2027 | Towns identify all dwelling units |
-| Oct 2027 | Tax Dept provides classification data |
-| April 2028 | First mandatory Dwelling Use Attestation |
+| July 2025 | Act 73 signed |
+| April 2028 | First mandatory dwelling attestations |
 | July 2028 | New tax rates take effect |
 
 ---
 
-## Warren's Current Breakdown
-
-Applying these definitions to Warren:
-
-- **HOMESTEAD**: 431 dwellings (20%)
-- **NHS_RESIDENTIAL**: 1,744 dwellings (80%)
-
-This 80/20 split is why Warren's housing situation is unusual - most dwellings don't house year-round residents.
-
----
-
-*Sources: Vermont Department of Taxes RP-1354 Report, H.454 (Act 73), 32 V.S.A. § 5401*
+*Sources: Vermont Act 73 (H.454), 32 V.S.A. § 5401*

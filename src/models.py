@@ -69,6 +69,15 @@ class Parcel(Base):
     assessed_building: Mapped[int | None] = mapped_column(Integer)
     assessed_total: Mapped[int | None] = mapped_column(Integer)
     property_type: Mapped[str | None] = mapped_column(String(20))  # residential, commercial, land
+    descprop: Mapped[str | None] = mapped_column(
+        Text,
+        doc="DESCPROP from Vermont Grand List. Primary source for dwelling count. "
+            "Patterns: '& DWL' (1), '& 2 DWLS' (2), '& MF' (multi-family)"
+    )
+    cat_code: Mapped[str | None] = mapped_column(
+        String(10),
+        doc="CAT code from Grand List. Less reliable than DESCPROP for dwelling count."
+    )
     year_built: Mapped[int | None] = mapped_column(Integer)
     lat: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
     lng: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))

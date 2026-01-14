@@ -1,0 +1,89 @@
+---
+title: "How We Model Warren's Housing"
+date: "2026-01-03"
+description: "Our methodology for identifying dwellings and classifying them - from parcels to positive signals to Act 73 categories."
+tags: ["methodology", "data-architecture", "dwellings"]
+author: "Open Valley Team"
+---
+
+Vermont's Act 73 classifies properties at the **dwelling** level, not the parcel level. A parcel is land. A dwelling is a home. One parcel might have zero dwellings (vacant land), one (single-family home), or many (condo building).
+
+## The Core Principle
+
+**Start with zero. Add only what we can prove.**
+
+We don't assume every parcel has a dwelling. We only create a dwelling record when we have concrete evidence one exists. This prevents counting barns, garages, and sheds as homes.
+
+## The Signal Hierarchy
+
+We check for evidence in priority order:
+
+| Signal | Source | Confidence |
+|--------|--------|------------|
+| DESCPROP contains "& DWL" | Grand List | 95% |
+| Homestead filed | Tax records | 95% |
+| Housesite value > $0 | Grand List | 85% |
+| STR listing exists | AirROI | 80% |
+
+If none of these signals exist, we don't create a dwelling.
+
+### What Each Signal Means
+
+**DESCPROP** - The Grand List's property description field. When it says "& DWL", that's the assessor documenting a dwelling exists. Examples: `"7.37 ACRES & DWL"` → 1 dwelling, `"2.5 ACRES & 2 DWLS"` → 2 dwellings.
+
+**Homestead filed** - Owner attests under penalty of perjury they live there. If someone lives there, a dwelling exists.
+
+**Housesite value** - Vermont assessors separate land value from home site value. If housesite > $0, the tax department recognizes a habitable structure.
+
+**STR listing** - If it's on Airbnb, someone's renting it. You can't rent what isn't habitable.
+
+### What We Don't Count
+
+These are **not enough** on their own:
+- Assessed building value > $0 (could be a barn)
+- Property type = "residential" (zoning doesn't guarantee a dwelling)
+- CAT code R1/R2 (often inconsistent with DESCPROP)
+
+## Data Layers
+
+**Layer 1: Parcels**
+- Source: Vermont Grand List
+- What: Land ownership records with SPAN, address, value, boundaries
+
+**Layer 2: Dwellings**
+- Source: Inferred from positive signals above
+- What: Habitable units linked to parcels
+
+**Layer 3: STR Listings**
+- Source: AirROI (Airbnb/VRBO aggregator)
+- What: Active rental listings matched to parcels by location
+
+## Classification Logic
+
+Once we identify a dwelling, we classify it per Act 73:
+
+**HOMESTEAD** - Owner's primary residence (6+ months/year). Must have homestead declaration filed.
+
+**NHS_RESIDENTIAL** - Second homes, vacation properties, short-term rentals. No one lives here year-round.
+
+**NHS_NONRESIDENTIAL** - Long-term rentals, 5+ unit buildings, commercial. (Currently undercounted - 2028 attestations will reveal these.)
+
+## Results
+
+As of January 2026:
+- About 60% of parcels have positive dwelling signals
+- About 40% have no evidence of a dwelling (woodland, vacant land, commercial)
+- Roughly one-third of dwellings are homesteads
+
+## Limitations
+
+This methodology is conservative. We likely undercount:
+- ADUs not in Grand List
+- Recent construction not yet recorded
+- Unpermitted dwellings (unless rented as STR)
+
+The 2028 Act 73 attestations will provide verified ground truth.
+
+---
+
+*Technical details in `scripts/analysis/infer_dwellings_v2.py`. Data models in `src/models.py`.*
