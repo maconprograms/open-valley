@@ -70,7 +70,7 @@ export default function ChartArtifact({ type, data }: ChartArtifactProps) {
               cy="50%"
               labelLine={true}
               label={({ name, percent }) =>
-                `${name}: ${(percent * 100).toFixed(0)}%`
+                `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`
               }
               outerRadius={100}
               dataKey="value"
@@ -80,8 +80,8 @@ export default function ChartArtifact({ type, data }: ChartArtifactProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number) => [
-                value.toLocaleString(),
+              formatter={(value) => [
+                (value as number)?.toLocaleString() ?? "0",
                 "Count",
               ]}
             />
@@ -133,8 +133,8 @@ export default function ChartArtifact({ type, data }: ChartArtifactProps) {
             }
           />
           <Tooltip
-            formatter={(value: number) => [
-              `$${value.toLocaleString()}`,
+            formatter={(value) => [
+              `$${(value as number)?.toLocaleString() ?? "0"}`,
               "Value",
             ]}
           />
