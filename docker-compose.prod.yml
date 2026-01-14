@@ -1,0 +1,82 @@
+# =============================================================================
+# Open Valley - Production Docker Compose
+# Runs PostgreSQL with pgvector + FastAPI + Next.js
+# =============================================================================
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up --build
+#
+# Environment variables (optional):
+#   POSTGRES_USER     - Database username (default: openvalley)
+#   POSTGRES_PASSWORD - Database password (default: openvalley)
+#   POSTGRES_DB       - Database name (default: openvalley)
+#   ADMIN_TOKEN       - Admin API token (default: dev-admin-token)
+#   LOGFIRE_TOKEN     - Logfire observability token (optional)
+#
+# Ports:
+#   8999 - FastAPI backend
+#   3000 - Next.js frontend
+#   5432 - PostgreSQL (for debugging, can be removed in production)
+# =============================================================================
+
+services:
+  # PostgreSQL with pgvector and PostGIS
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    image: openvalley-db:latest
+    container_name: openvalley-db-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-openvalley}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openvalley}
+      POSTGRES_DB: ${POSTGRES_DB:-openvalley}
+    volumes:
+      - openvalley_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openvalley -d openvalley"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - openvalley-network
+    restart: unless-stopped
+
+  # Combined FastAPI + Next.js application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openvalley-app:latest
+    container_name: openvalley-app
+    environment:
+      # Database connection (uses internal Docker network)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openvalley}:${POSTGRES_PASSWORD:-openvalley}@db:5432/${POSTGRES_DB:-openvalley}
+      # Admin token for HITL review endpoints
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+      # Optional: Logfire observability
+      LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+      # Production mode
+      NODE_ENV: production
+    ports:
+      - "8999:8999"  # FastAPI backend
+      - "3000:3000"  # Next.js frontend
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - openvalley-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8999/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  openvalley_prod_data:
+
+networks:
+  openvalley-network:
+    driver: bridge

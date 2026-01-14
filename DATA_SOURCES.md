@@ -26,7 +26,7 @@ PropertyOwnership → Person (central entity)
 Organization        FPF Posts (58k)
 ```
 
-See `api/src/schemas.py` for Pydantic validation models with Act 73 rules.
+See `src/schemas.py` for Pydantic validation models with Act 73 rules.
 
 ---
 

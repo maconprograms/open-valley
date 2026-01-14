@@ -9,9 +9,8 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-2">
             <h3 className="font-semibold text-gray-900 mb-2">Open Valley</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Understanding Warren, VT through data. Only 20% of dwellings are
-              primary residences — we&apos;re making housing patterns visible to
-              help residents and policymakers make informed decisions.
+              Understanding Warren, VT through data. Making housing patterns
+              visible to help residents and policymakers make informed decisions.
             </p>
             <p className="text-xs text-gray-500">
               Data from Vermont Geodata Portal, Grand List, AirROI, and Front
@@ -23,14 +22,6 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">Explore</h3>
             <ul className="space-y-1 text-sm">
-              <li>
-                <Link
-                  href="/explore"
-                  className="text-gray-600 hover:text-emerald-600"
-                >
-                  Chat with AI
-                </Link>
-              </li>
               <li>
                 <Link
                   href="/learn"
@@ -56,10 +47,10 @@ export default function Footer() {
             <ul className="space-y-1 text-sm">
               <li>
                 <Link
-                  href="/learn/understanding-act-73"
+                  href="/learn/glossary"
                   className="text-gray-600 hover:text-emerald-600"
                 >
-                  Vermont Act 73
+                  Glossary of Terms
                 </Link>
               </li>
               <li>

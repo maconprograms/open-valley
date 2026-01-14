@@ -200,10 +200,25 @@ async def awp_endpoint(request: Request):
 # =============================================================================
 
 
+class ParcelCategoryStats(BaseModel):
+    """Statistics for a parcel category."""
+    count: int
+    percent: float
+
+
+class ParcelBreakdown(BaseModel):
+    """Breakdown of parcels by category."""
+    total: int
+    homestead: ParcelCategoryStats
+    nhs_residential: ParcelCategoryStats
+    other: ParcelCategoryStats
+
+
 class ParcelStats(BaseModel):
     """Statistics about parcels."""
     count: int
     total_value: int
+    breakdown: ParcelBreakdown | None = None
 
 
 class HomesteadStats(BaseModel):
@@ -261,12 +276,29 @@ async def get_dashboard_stats():
         parcel_count = db.query(func.count(Parcel.id)).scalar() or 0
         total_value = db.query(func.sum(Parcel.assessed_total)).scalar() or 0
 
+        # Parcel breakdown by category
+        parcel_breakdown = db.execute(sql_text("""
+            WITH parcel_categories AS (
+                SELECT
+                    p.id,
+                    p.property_type,
+                    EXISTS (SELECT 1 FROM dwellings d WHERE d.parcel_id = p.id AND d.homestead_filed = true) as is_homestead
+                FROM parcels p
+            )
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE is_homestead = true) as homestead,
+                COUNT(*) FILTER (WHERE is_homestead = false AND property_type IN ('residential', 'multi-family')) as nhs_residential,
+                COUNT(*) FILTER (WHERE is_homestead = false AND property_type NOT IN ('residential', 'multi-family')) as other
+            FROM parcel_categories
+        """)).fetchone()
+
         # Dwelling statistics using raw SQL (avoid ORM/schema mismatch)
         dwelling_stats = db.execute(sql_text("""
             SELECT
                 COUNT(*) as total,
-                COUNT(*) FILTER (WHERE tax_classification = 'HOMESTEAD') as homestead,
-                COUNT(*) FILTER (WHERE tax_classification = 'NHS_RESIDENTIAL') as nhs_residential
+                COUNT(*) FILTER (WHERE homestead_filed = true) as homestead,
+                COUNT(*) FILTER (WHERE homestead_filed = false OR homestead_filed IS NULL) as nhs_residential
             FROM dwellings
         """)).fetchone()
 
@@ -301,10 +333,31 @@ async def get_dashboard_stats():
         # PropertyOwnership count
         ownership_count = db.query(func.count(PropertyOwnership.id)).scalar() or 0
 
+        # Calculate parcel breakdown percentages
+        pb_total = parcel_breakdown.total or parcel_count
+        pb_homestead = parcel_breakdown.homestead or 0
+        pb_nhs_res = parcel_breakdown.nhs_residential or 0
+        pb_other = parcel_breakdown.other or 0
+
         return DashboardStatsResponse(
             parcels=ParcelStats(
                 count=parcel_count,
                 total_value=int(total_value),
+                breakdown=ParcelBreakdown(
+                    total=pb_total,
+                    homestead=ParcelCategoryStats(
+                        count=pb_homestead,
+                        percent=round((pb_homestead / pb_total) * 100, 1) if pb_total > 0 else 0.0,
+                    ),
+                    nhs_residential=ParcelCategoryStats(
+                        count=pb_nhs_res,
+                        percent=round((pb_nhs_res / pb_total) * 100, 1) if pb_total > 0 else 0.0,
+                    ),
+                    other=ParcelCategoryStats(
+                        count=pb_other,
+                        percent=round((pb_other / pb_total) * 100, 1) if pb_total > 0 else 0.0,
+                    ),
+                ),
             ),
             dwellings=DwellingStats(
                 total=total_dwellings,
@@ -360,7 +413,6 @@ async def get_dwellings_geojson():
             SELECT
                 d.id,
                 d.unit_number,
-                d.tax_classification,
                 d.homestead_filed,
                 d.bedrooms,
                 d.str_listing_id,
@@ -376,8 +428,9 @@ async def get_dwellings_geojson():
 
         features = []
         for row in result:
-            # Determine classification for coloring
-            classification = "homestead" if row.tax_classification == "HOMESTEAD" else "non_homestead"
+            # Determine classification for coloring based on homestead_filed
+            classification = "homestead" if row.homestead_filed else "non_homestead"
+            tax_classification = "HOMESTEAD" if row.homestead_filed else "NHS_RESIDENTIAL"
 
             features.append({
                 "type": "Feature",
@@ -391,7 +444,7 @@ async def get_dwellings_geojson():
                     "span": row.span,
                     "address": row.address,
                     "unit_number": row.unit_number,
-                    "tax_classification": row.tax_classification,
+                    "tax_classification": tax_classification,
                     "classification": classification,
                     "homestead_filed": row.homestead_filed,
                     "bedrooms": row.bedrooms,
@@ -459,15 +512,21 @@ async def get_parcels_geojson():
 
     logger.info(f"Fetched {len(all_features)} parcels from Vermont Geodata")
 
-    # Get local homestead data for enrichment
+    # Get local homestead and property_type data for enrichment
     db = SessionLocal()
     try:
-        # Build SPAN -> homestead_filed lookup
-        tax_records = db.query(TaxStatus.parcel_id, TaxStatus.homestead_filed, Parcel.span).join(
+        # Build SPAN -> (homestead_filed, property_type) lookup
+        tax_records = db.query(
+            TaxStatus.parcel_id,
+            TaxStatus.homestead_filed,
+            Parcel.span,
+            Parcel.property_type
+        ).join(
             Parcel, TaxStatus.parcel_id == Parcel.id
         ).all()
 
         homestead_lookup = {r.span: r.homestead_filed for r in tax_records}
+        property_type_lookup = {r.span: r.property_type for r in tax_records}
         logger.debug(f"Built homestead lookup with {len(homestead_lookup)} entries")
     finally:
         db.close()
@@ -484,8 +543,16 @@ async def get_parcels_geojson():
             # Fall back to HSDECL from API
             props["homestead_filed"] = props.get("HSDECL") == "Y"
 
-        # Add classification for choropleth
-        props["classification"] = "homestead" if props["homestead_filed"] else "second_home"
+        # Add property_type from local database
+        props["property_type"] = property_type_lookup.get(span, "other") if span else "other"
+
+        # Add classification for choropleth (three categories)
+        if props["homestead_filed"]:
+            props["classification"] = "homestead"
+        elif props["property_type"] in ("residential", "multi-family"):
+            props["classification"] = "nhs_residential"
+        else:
+            props["classification"] = "other"
 
     result = {
         "type": "FeatureCollection",

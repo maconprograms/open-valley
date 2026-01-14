@@ -40,6 +40,7 @@ from src.database import engine
 from src.models import (
     Base,
     Dwelling,
+    DwellingUse,
     Organization,
     OrganizationType,
     OwnershipType,
@@ -407,6 +408,8 @@ def import_all(session: Session, rows: list[VermontRow]):
             parcel.assessed_building = first_row.assessed_building
             parcel.assessed_total = first_row.assessed_total
             parcel.property_type = get_property_type(first_row.cat_code, first_row.descprop)
+            parcel.descprop = first_row.descprop
+            parcel.cat_code = first_row.cat_code
             parcels_updated += 1
         else:
             # Create new parcel
@@ -422,6 +425,8 @@ def import_all(session: Session, rows: list[VermontRow]):
                 assessed_building=first_row.assessed_building,
                 assessed_total=first_row.assessed_total,
                 property_type=get_property_type(first_row.cat_code, first_row.descprop),
+                descprop=first_row.descprop,
+                cat_code=first_row.cat_code,
             )
             session.add(parcel)
             parcels_created += 1
@@ -434,13 +439,13 @@ def import_all(session: Session, rows: list[VermontRow]):
             is_condo = len(unit_rows) > 1
             unit_number = str(i + 1) if is_condo else None
 
-            # Determine tax classification from homestead status
+            # Determine dwelling use and occupancy from homestead status
             if row.homestead_declared:
-                tax_classification = "HOMESTEAD"
-                use_type = "owner_occupied_primary"
+                dwelling_use = DwellingUse.FULL_TIME_RESIDENCE
+                is_owner_occupied = True
             else:
-                tax_classification = "NHS_RESIDENTIAL"
-                use_type = "owner_occupied_secondary"
+                dwelling_use = DwellingUse.SECOND_HOME
+                is_owner_occupied = None  # Unknown for non-homestead
 
             # Create dwelling
             dwelling = Dwelling(
@@ -448,8 +453,8 @@ def import_all(session: Session, rows: list[VermontRow]):
                 parcel_id=parcel.id,
                 unit_number=unit_number,
                 assessed_value=row.assessed_total,
-                tax_classification=tax_classification,
-                use_type=use_type,
+                dwelling_use=dwelling_use,
+                is_owner_occupied=is_owner_occupied,
                 homestead_filed=row.homestead_declared,
                 occupant_name=row.owner_name,  # Owner as initial occupant
                 data_source="grand_list",
