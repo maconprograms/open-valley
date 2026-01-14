@@ -106,10 +106,12 @@ export default function WarrenMap({
                   "fill-color": [
                     "case",
                     ["==", ["get", "classification"], "homestead"],
-                    "#22c55e",
-                    "#f97316",
+                    "#34d399", // emerald-400 - bright green for homesteads
+                    ["==", ["get", "classification"], "nhs_residential"],
+                    "#fbbf24", // amber-400 - bright orange for non-homestead residential
+                    "#94a3b8", // slate-400 - grey for other parcels
                   ],
-                  "fill-opacity": 0.25,
+                  "fill-opacity": 0.3,
                 },
               });
               map.addLayer({
@@ -236,8 +238,8 @@ export default function WarrenMap({
                 const address = props.address || "Unknown address";
                 const unit = props.unit_number ? ` (${props.unit_number})` : "";
                 const status = props.tax_classification === "HOMESTEAD"
-                  ? '<span style="color:#22c55e">Homestead</span>'
-                  : '<span style="color:#f97316">Non-Homestead</span>';
+                  ? '<span style="color:#34d399">Homestead</span>'
+                  : '<span style="color:#fbbf24">Non-Homestead</span>';
                 const bedrooms = props.bedrooms ? `${props.bedrooms}` : "N/A";
 
                 new maplibregl.Popup({ closeButton: true, maxWidth: "280px" })
@@ -283,10 +285,12 @@ export default function WarrenMap({
               });
 
               // --- CLUSTER CLICK TO ZOOM ---
-              map.on("click", "clusters", (e: { features?: Array<{ properties?: Record<string, unknown>; geometry?: { coordinates: [number, number] } }> }) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              map.on("click", "clusters", (e: any) => {
                 if (!e.features?.length) return;
                 const clusterId = e.features[0].properties?.cluster_id;
-                const source = map.getSource("dwellings");
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const source = map.getSource("dwellings") as any;
                 if (source && typeof source.getClusterExpansionZoom === "function") {
                   source.getClusterExpansionZoom(clusterId, (err: Error | null, zoom: number) => {
                     if (err) return;
@@ -387,12 +391,16 @@ export default function WarrenMap({
             <span>Dwellings</span>
           </label>
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded bg-green-500/50 border border-slate-700" />
-            <span>Homestead Parcels</span>
+            <span className="w-4 h-4 rounded bg-emerald-400/60 border border-slate-700" />
+            <span>Homestead</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded bg-orange-500/50 border border-slate-700" />
-            <span>Non-Homestead Parcels</span>
+            <span className="w-4 h-4 rounded bg-amber-400/60 border border-slate-700" />
+            <span>Non-Homestead Residential</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 rounded bg-slate-400/60 border border-slate-700" />
+            <span>Other</span>
           </div>
         </div>
       </div>
