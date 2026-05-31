@@ -67,3 +67,7 @@ yarn-debug.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Warren raw page cache (re-fetchable)
+warren/raw_html/
+warren/outputs/_all_records_summary.html
