@@ -7,11 +7,16 @@ const nextConfig: NextConfig = {
 
   // Proxy API requests to FastAPI backend in production
   async rewrites() {
-    const apiUrl = process.env.INTERNAL_API_URL || "http://localhost:8999";
+    const legacyApiUrl = process.env.INTERNAL_API_URL || "http://localhost:8999";
+    const baselineApiUrl = process.env.INTERNAL_BASELINE_API_URL || "http://localhost:8998";
     return [
       {
+        source: "/api/baseline/:path*",
+        destination: `${baselineApiUrl}/api/baseline/:path*`,
+      },
+      {
         source: "/api/:path*",
-        destination: `${apiUrl}/:path*`,
+        destination: `${legacyApiUrl}/:path*`,
       },
     ];
   },

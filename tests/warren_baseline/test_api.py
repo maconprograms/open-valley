@@ -42,6 +42,7 @@ class BaselineApiTests(unittest.TestCase):
         self.assertEqual(summary.status_code, 200)
         self.assertEqual(summary.json()["tax_accounts"]["total"], 1)
         self.assertEqual(map_data.status_code, 200)
+        self.assertTrue(map_data.headers["content-type"].startswith("application/geo+json"))
         self.assertNotIn("owner_text", map_data.json()["features"][0]["properties"])
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["mailing_states"], ["MA"])
