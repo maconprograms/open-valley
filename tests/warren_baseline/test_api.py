@@ -54,6 +54,15 @@ class BaselineApiTests(unittest.TestCase):
         response = self.client.get("/api/baseline/accounts/warren:missing")
         self.assertEqual(response.status_code, 404)
 
+    def test_standalone_app_serves_the_materialized_homestead_trend(self):
+        from src.warren_baseline.app import app
+
+        response = TestClient(app).get("/api/baseline/trends/homestead")
+        self.assertEqual(response.status_code, 200)
+        observations = response.json()["observations"]
+        self.assertEqual(observations[-1]["grand_list_year"], 2025)
+        self.assertEqual(observations[-1]["homestead_filed"], 528)
+
 
 if __name__ == "__main__":
     unittest.main()

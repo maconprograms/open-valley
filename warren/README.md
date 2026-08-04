@@ -62,6 +62,28 @@ legacy database or AI services with:
 uv run uvicorn src.warren_baseline.app:app --port 8998
 ```
 
+### Historical homestead series
+
+The VCGI archive retains Grand List snapshots, including the source `HSDECL`
+field. The large statewide archive ZIPs are re-fetchable local inputs in
+`warren/raw_vcgi_snapshots/` (ignored by Git); the committed Warren-only output
+is `warren/outputs/historical/`. Rebuild it with:
+
+```bash
+uv run python warren/scripts/extract_historical_homesteads.py
+```
+
+The resulting annual metric is **homestead filed among Grand List records with
+`PARCID`**, not a housing-unit or residency rate. The 2017 archive is retained
+as a documented coverage gap because it has no usable Warren Grand List join;
+the first usable year is 2018.
+
+For this first town, the append-only source files are the right storage layer:
+they preserve raw archive provenance, are reviewable without a database, and
+keep the time series reproducible. Add Postgres once we need cross-town queries,
+review workflows, or interactive joins across many annual account snapshots;
+the ledger records map directly to future relational tables.
+
 ## Keys & how the tables relate
 
 - **`parcel_id`** links the NEMRC tables (`properties`, `buildings`, `land`, `joined`).
