@@ -54,8 +54,13 @@ uv run python -c "from pathlib import Path; from src.warren_baseline.repository 
 
 Promotion only moves the manifest pointer after a run has been validated and its
 local map projection has been created. It does not overwrite past source runs.
-The API routes are `/api/baseline/summary`, `/map`, `/accounts/{account_id}`,
-`/transfers`, and `/sources`.
+The standalone baseline API routes are `/api/baseline/summary`, `/map`,
+`/accounts/{account_id}`, `/transfers`, and `/sources`. Start it without the
+legacy database or AI services with:
+
+```bash
+uv run uvicorn src.warren_baseline.app:app --port 8998
+```
 
 ## Keys & how the tables relate
 

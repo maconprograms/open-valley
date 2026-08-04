@@ -18,7 +18,7 @@ interface BaselineSummary {
   out_of_state_mailing: Counts;
 }
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8999";
+const apiBase = process.env.NEXT_PUBLIC_BASELINE_API_URL || "http://localhost:8998";
 
 function Percentage({ numerator, denominator }: { numerator: number; denominator: number }) {
   if (!denominator) return <>—</>;
