@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Open Valley - Warren Property Intelligence",
-  description: "Conversational AI for exploring Warren, VT property data",
+  title: "Open Valley — Warren baseline",
+  description: "Source-led Warren, Vermont property, homestead-filing, and mailing-address facts.",
 };
 
 export default function RootLayout({
@@ -23,25 +23,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8999";
-
   return (
     <html lang="en">
-      <head>
-        {/* Prefetch GeoJSON data for map - starts fetching while page loads */}
-        <link
-          rel="prefetch"
-          href={`${apiUrl}/api/parcels/geojson`}
-          as="fetch"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="prefetch"
-          href={`${apiUrl}/api/dwellings/geojson`}
-          as="fetch"
-          crossOrigin="anonymous"
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

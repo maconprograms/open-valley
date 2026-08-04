@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
 from .repository import BaselineRepository
 
@@ -26,9 +27,9 @@ def create_baseline_router(repository: BaselineRepository | None = None) -> APIR
     def summary():
         return read(repository.summary)
 
-    @router.get("/map")
+    @router.get("/map", response_class=FileResponse)
     def map_projection():
-        return read(repository.map_projection)
+        return read(lambda: FileResponse(repository.map_projection_path(), media_type="application/geo+json"))
 
     @router.get("/accounts/{account_id}")
     def account_detail(account_id: str):

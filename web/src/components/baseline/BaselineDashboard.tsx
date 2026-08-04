@@ -40,7 +40,7 @@ interface HomesteadTrend {
   observations: HomesteadTrendObservation[];
 }
 
-const apiBase = process.env.NEXT_PUBLIC_BASELINE_API_URL || "http://localhost:8998";
+const apiBase = process.env.NEXT_PUBLIC_BASELINE_API_URL || "";
 
 function Percentage({ numerator, denominator }: { numerator: number; denominator: number }) {
   if (!denominator) return <>—</>;
@@ -53,22 +53,28 @@ export default function BaselineDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${apiBase}/api/baseline/summary`)
+    const controller = new AbortController();
+    fetch(`${apiBase}/api/baseline/summary`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`API returned ${response.status}`);
         return response.json() as Promise<BaselineSummary>;
       })
       .then(setSummary)
-      .catch(() => {
-        setError("The current Warren source run is unavailable. No fallback figures are shown.");
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") {
+          setError("The current Warren source run is unavailable. No fallback figures are shown.");
+        }
       });
-    fetch(`${apiBase}/api/baseline/trends/homestead`)
+    fetch(`${apiBase}/api/baseline/trends/homestead`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`API returned ${response.status}`);
         return response.json() as Promise<HomesteadTrend>;
       })
       .then(setTrend)
-      .catch(() => setTrend(null));
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setTrend(null);
+      });
+    return () => controller.abort();
   }, []);
 
   return (
