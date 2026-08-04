@@ -10,7 +10,9 @@
     "homestead_not_filed": null,
     "homestead_unknown": null,
     "known_homestead_denominator": null,
-    "homestead_filed_percent_of_known": null
+    "homestead_filed_percent_of_known": null,
+    "category_o_other_excluded": null,
+    "category_o_other_and_multiunit_excluded": null
   },
   {
     "grand_list_year": 2018,
@@ -23,7 +25,25 @@
     "homestead_not_filed": 2427,
     "homestead_unknown": 0,
     "known_homestead_denominator": 2948,
-    "homestead_filed_percent_of_known": 17.67
+    "homestead_filed_percent_of_known": 17.67,
+    "category_o_other_excluded": {
+      "records_removed": 1091,
+      "records_remaining": 1857,
+      "homestead_filed": 446,
+      "homestead_not_filed": 1411,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1857,
+      "homestead_filed_percent_of_known": 24.02
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1139,
+      "records_remaining": 1809,
+      "homestead_filed": 436,
+      "homestead_not_filed": 1373,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1809,
+      "homestead_filed_percent_of_known": 24.1
+    }
   },
   {
     "grand_list_year": 2019,
@@ -36,7 +56,25 @@
     "homestead_not_filed": 2406,
     "homestead_unknown": 0,
     "known_homestead_denominator": 2931,
-    "homestead_filed_percent_of_known": 17.91
+    "homestead_filed_percent_of_known": 17.91,
+    "category_o_other_excluded": {
+      "records_removed": 1090,
+      "records_remaining": 1841,
+      "homestead_filed": 442,
+      "homestead_not_filed": 1399,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1841,
+      "homestead_filed_percent_of_known": 24.01
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1137,
+      "records_remaining": 1794,
+      "homestead_filed": 430,
+      "homestead_not_filed": 1364,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1794,
+      "homestead_filed_percent_of_known": 23.97
+    }
   },
   {
     "grand_list_year": 2020,
@@ -49,7 +87,25 @@
     "homestead_not_filed": 2393,
     "homestead_unknown": 0,
     "known_homestead_denominator": 2912,
-    "homestead_filed_percent_of_known": 17.82
+    "homestead_filed_percent_of_known": 17.82,
+    "category_o_other_excluded": {
+      "records_removed": 1090,
+      "records_remaining": 1822,
+      "homestead_filed": 443,
+      "homestead_not_filed": 1379,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1822,
+      "homestead_filed_percent_of_known": 24.31
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1138,
+      "records_remaining": 1774,
+      "homestead_filed": 429,
+      "homestead_not_filed": 1345,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1774,
+      "homestead_filed_percent_of_known": 24.18
+    }
   },
   {
     "grand_list_year": 2021,
@@ -62,7 +118,25 @@
     "homestead_not_filed": 2366,
     "homestead_unknown": 0,
     "known_homestead_denominator": 2887,
-    "homestead_filed_percent_of_known": 18.05
+    "homestead_filed_percent_of_known": 18.05,
+    "category_o_other_excluded": {
+      "records_removed": 1090,
+      "records_remaining": 1797,
+      "homestead_filed": 445,
+      "homestead_not_filed": 1352,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1797,
+      "homestead_filed_percent_of_known": 24.76
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1137,
+      "records_remaining": 1750,
+      "homestead_filed": 429,
+      "homestead_not_filed": 1321,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1750,
+      "homestead_filed_percent_of_known": 24.51
+    }
   },
   {
     "grand_list_year": 2022,
@@ -75,7 +149,25 @@
     "homestead_not_filed": 2355,
     "homestead_unknown": 0,
     "known_homestead_denominator": 2870,
-    "homestead_filed_percent_of_known": 17.94
+    "homestead_filed_percent_of_known": 17.94,
+    "category_o_other_excluded": {
+      "records_removed": 1090,
+      "records_remaining": 1780,
+      "homestead_filed": 444,
+      "homestead_not_filed": 1336,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1780,
+      "homestead_filed_percent_of_known": 24.94
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1136,
+      "records_remaining": 1734,
+      "homestead_filed": 430,
+      "homestead_not_filed": 1304,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1734,
+      "homestead_filed_percent_of_known": 24.8
+    }
   },
   {
     "grand_list_year": 2023,
@@ -88,7 +180,25 @@
     "homestead_not_filed": 2358,
     "homestead_unknown": 0,
     "known_homestead_denominator": 2857,
-    "homestead_filed_percent_of_known": 17.47
+    "homestead_filed_percent_of_known": 17.47,
+    "category_o_other_excluded": {
+      "records_removed": 1090,
+      "records_remaining": 1767,
+      "homestead_filed": 428,
+      "homestead_not_filed": 1339,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1767,
+      "homestead_filed_percent_of_known": 24.22
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1136,
+      "records_remaining": 1721,
+      "homestead_filed": 416,
+      "homestead_not_filed": 1305,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1721,
+      "homestead_filed_percent_of_known": 24.17
+    }
   },
   {
     "grand_list_year": 2024,
@@ -101,7 +211,25 @@
     "homestead_not_filed": 2343,
     "homestead_unknown": 0,
     "known_homestead_denominator": 2840,
-    "homestead_filed_percent_of_known": 17.5
+    "homestead_filed_percent_of_known": 17.5,
+    "category_o_other_excluded": {
+      "records_removed": 1090,
+      "records_remaining": 1750,
+      "homestead_filed": 428,
+      "homestead_not_filed": 1322,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1750,
+      "homestead_filed_percent_of_known": 24.46
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1136,
+      "records_remaining": 1704,
+      "homestead_filed": 415,
+      "homestead_not_filed": 1289,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1704,
+      "homestead_filed_percent_of_known": 24.35
+    }
   },
   {
     "grand_list_year": 2025,
@@ -114,6 +242,24 @@
     "homestead_not_filed": 2544,
     "homestead_unknown": 0,
     "known_homestead_denominator": 3072,
-    "homestead_filed_percent_of_known": 17.19
+    "homestead_filed_percent_of_known": 17.19,
+    "category_o_other_excluded": {
+      "records_removed": 1305,
+      "records_remaining": 1767,
+      "homestead_filed": 446,
+      "homestead_not_filed": 1321,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1767,
+      "homestead_filed_percent_of_known": 25.24
+    },
+    "category_o_other_and_multiunit_excluded": {
+      "records_removed": 1353,
+      "records_remaining": 1719,
+      "homestead_filed": 434,
+      "homestead_not_filed": 1285,
+      "homestead_unknown": 0,
+      "known_homestead_denominator": 1719,
+      "homestead_filed_percent_of_known": 25.25
+    }
   }
 ]
