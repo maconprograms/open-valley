@@ -30,6 +30,7 @@ class BaselineRepositoryTests(unittest.TestCase):
         repository.promote(self.result.run_id)
 
         projection = repository.map_projection()
+        self.assertEqual(repository.map_projection_path().name, "map.geojson")
         self.assertEqual(projection["source_run_id"], self.result.run_id)
         self.assertEqual(len(projection["features"]), 1)
         properties = projection["features"][0]["properties"]

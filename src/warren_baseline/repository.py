@@ -22,6 +22,7 @@ class BaselineRepository:
 
     def __init__(self, root: Path):
         self.root = root
+        self._records_cache: dict[Path, tuple[int, list[dict[str, Any]]]] = {}
 
     @property
     def manifest_path(self) -> Path:
@@ -47,7 +48,14 @@ class BaselineRepository:
         return path
 
     def records(self, name: str, run_id: str | None = None) -> list[dict[str, Any]]:
-        return read_jsonl(self.run_directory(run_id) / f"{name}.jsonl")
+        path = self.run_directory(run_id) / f"{name}.jsonl"
+        modified_at = path.stat().st_mtime_ns
+        cached = self._records_cache.get(path)
+        if cached and cached[0] == modified_at:
+            return cached[1]
+        records = read_jsonl(path)
+        self._records_cache[path] = (modified_at, records)
+        return records
 
     def source_run(self, run_id: str | None = None) -> dict[str, Any]:
         path = self.run_directory(run_id) / "source_run.json"
@@ -135,10 +143,14 @@ class BaselineRepository:
     def _first(records: list[dict[str, Any]]) -> dict[str, Any] | None:
         return records[0] if records else None
 
-    def map_projection(self) -> dict[str, Any]:
+    def map_projection_path(self) -> Path:
         path = self.run_directory() / "map.geojson"
         if not path.exists():
             raise LookupError("Current source run has not been projected")
+        return path
+
+    def map_projection(self) -> dict[str, Any]:
+        path = self.map_projection_path()
         return json.loads(path.read_text(encoding="utf-8"))
 
     def summary(self) -> dict[str, Any]:
