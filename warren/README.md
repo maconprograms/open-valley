@@ -21,6 +21,42 @@ coordinates.
 | `warren_properties.json` | 3,105 | Full nested record per parcel — every field from the property card. |
 | `parcels.txt` | 3,105 | List of all parcel IDs. |
 
+## Evidence-first baseline dashboard
+
+`warren/outputs/baseline/` is the canonical input for the new Warren baseline
+API and map. It is an append-only set of source runs rather than a replacement
+for the source extracts above. `manifest.json` identifies the validated,
+promoted `current_run`; each run preserves JSONL observations, its source
+checksums, coverage, and a privacy-preserving `map.geojson` projection.
+
+The dashboard deliberately shows separate denominators:
+
+| Measure | Denominator | Meaning | It does **not** establish |
+|---|---|---|---|
+| Tax accounts | Current NEMRC property-account rows | Current account inventory | Housing units or occupied homes |
+| Housing-unit claims | Source-supported claims attached to accounts | Documented, inferred, and unknown physical-unit evidence | An official unit inventory or occupancy |
+| Homestead filed | Accounts with a known VCGI `HSDECL` flag | A filed homestead declaration | A full-time resident |
+| Out-of-state mailing | Accounts with a known owner mailing state | A mailing address outside Vermont | A second home, residency, or buyer intent |
+| PTTR transfers | State transfer-event rows | A recorded sale/transfer event | A homestead gain/loss without dated before-and-after evidence |
+
+### Refreshing the current baseline
+
+Run this from the repository root after refreshing the NEMRC and VCGI extracts.
+The PTTR fetch is the Vermont state ArcGIS source; it is intentionally stored as
+a dated, reproducible input to the source run.
+
+```bash
+uv run python warren/scripts/join_nemrc_vcgi.py
+uv run python warren/scripts/fetch_pttr_baseline.py
+uv run python -m warren.scripts.build_baseline --pttr warren/outputs/warren_pttr.json
+uv run python -c "from pathlib import Path; from src.warren_baseline.repository import BaselineRepository; r = BaselineRepository(Path('warren/outputs/baseline')); r.promote(r.manifest()['last_staged_run'])"
+```
+
+Promotion only moves the manifest pointer after a run has been validated and its
+local map projection has been created. It does not overwrite past source runs.
+The API routes are `/api/baseline/summary`, `/map`, `/accounts/{account_id}`,
+`/transfers`, and `/sources`.
+
 ## Keys & how the tables relate
 
 - **`parcel_id`** links the NEMRC tables (`properties`, `buildings`, `land`, `joined`).

@@ -8,12 +8,20 @@ Produces warren_joined.csv: every NEMRC property (left join) + selected VCGI
 columns (grand-list values, E911 address) + a WGS84 centroid (lon/lat) computed
 from the matched parcel polygon. Full geometry stays in warren_parcels.geojson.
 """
-import os, csv, json, re
+import csv
+import json
+import os
+import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VCGI_KEEP = ['MAPID', 'PARCID', 'OWNER1', 'OWNER2', 'E911ADDR', 'LOCAPROP',
-             'ACRESGL', 'CAT', 'REAL_FLV', 'LAND_LV', 'IMPRV_LV',
-             'HSITEVAL', 'DESCPROP']
+OUTPUTS = os.path.join(os.path.dirname(HERE), 'outputs')
+VCGI_KEEP = [
+    'MAPID', 'PARCID', 'OWNER1', 'OWNER2', 'E911ADDR', 'LOCAPROP',
+    'ADDRGL1', 'ADDRGL2', 'CITYGL', 'STGL', 'ZIPGL',
+    'GLYEAR', 'SOURCEDATE', 'EDITDATE', 'HSDECL',
+    'ACRESGL', 'CAT', 'REAL_FLV', 'LAND_LV', 'IMPRV_LV',
+    'HSITEVAL', 'DESCPROP',
+]
 
 
 def clean(s):
@@ -41,7 +49,7 @@ def centroid(geom):
 def main():
     # index VCGI by cleaned PARCID and by SPAN; also keep centroid per feature
     by_parcid, by_span = {}, {}
-    fc = json.load(open(os.path.join(HERE, 'warren_parcels.geojson')))
+    fc = json.load(open(os.path.join(OUTPUTS, 'warren_parcels.geojson')))
     for f in fc.get('features', []):
         p = f.get('properties') or {}
         rec = dict(p)
@@ -53,13 +61,15 @@ def main():
         if sp:
             by_span.setdefault(sp, rec)
 
-    nem = list(csv.DictReader(open(os.path.join(HERE, 'warren_properties.csv'))))
+    nem = list(csv.DictReader(open(os.path.join(OUTPUTS, 'warren_properties.csv'))))
     out_cols = list(nem[0].keys()) + ['gis_match', 'gis_lon', 'gis_lat'] + \
         ['gis_' + c for c in VCGI_KEEP]
 
     n_parcid = n_span = n_none = 0
-    with open(os.path.join(HERE, 'warren_joined.csv'), 'w', newline='') as fh:
-        w = csv.DictWriter(fh, fieldnames=out_cols, extrasaction='ignore')
+    with open(os.path.join(OUTPUTS, 'warren_joined.csv'), 'w', newline='') as fh:
+        w = csv.DictWriter(
+            fh, fieldnames=out_cols, extrasaction='ignore', lineterminator='\n'
+        )
         w.writeheader()
         for r in nem:
             row = dict(r)
