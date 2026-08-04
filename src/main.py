@@ -16,7 +16,6 @@ import httpx
 from .agent import WarrenContext, warren_agent
 from .database import SessionLocal, init_db
 from .models import Dwelling, Organization, Parcel, Person, PropertyOwnership, STRListing, TaxStatus
-from .warren_baseline.api import create_baseline_router
 
 # Vermont Geodata ArcGIS REST API
 ARCGIS_BASE = "https://services1.arcgis.com/BkFxaEFNwHqX3tAw/arcgis/rest/services"
@@ -53,7 +52,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(create_baseline_router())
 
 
 @app.get("/")
