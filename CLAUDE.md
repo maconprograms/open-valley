@@ -1,5 +1,11 @@
 # Open Valley — Warren evidence-first baseline
 
+Purpose: Define the active product boundary, data guardrails, and contributor workflow.
+Audience: Contributors and coding agents working on the Warren baseline.
+Status: guide
+Owner: Open Valley maintainers
+Last updated: 2026-08-04
+
 Open Valley is a local civic-data project that begins with Warren, Vermont. The
 active product is a map-first baseline for property accounts, housing-unit
 evidence, homestead filings, owner mailing geography, and transfer records.

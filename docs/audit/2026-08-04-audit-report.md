@@ -1,5 +1,11 @@
 # Codebase Audit Report — Warren Baseline Dashboard
 
+Purpose: Record the baseline audit, fixes made, and safeguards still required.
+Audience: Contributors reviewing code quality and deployment readiness.
+Status: reference
+Owner: Open Valley maintainers
+Last updated: 2026-08-04
+
 **Date:** 2026-08-04  
 **Audited by:** Focused deep audit (Inspector, Stress Tester, Architect, Privacy Reviewer, Accessibility Reviewer)  
 **Stack:** Next.js 16 / React 19 / TypeScript / MapLibre; FastAPI / Python; immutable JSONL and GeoJSON source ledger  
@@ -22,7 +28,7 @@ per-run indexes are needed after measuring larger cross-town data.
 
 ## Executive Summary
 
-The new Warren baseline is a sound, deliberately separate evidence-ledger surface: it keeps tax accounts and housing-unit claims distinct, preserves source runs, and redacts owner names from the map. Its immediate weakness is at the map/API boundary: runtime GeoJSON properties are trusted as TypeScript values, which directly caused the reported parcel-click crash. The active dashboard also pays for legacy requests and repeatedly parses a 6 MB map artifact, both of which are straightforward to remove.
+The new Warren baseline is a sound, deliberately separate evidence-ledger surface: it keeps tax accounts and housing-unit claims distinct, preserves source runs, and redacts owner names from the map. The original MapLibre type-boundary crash and the avoidable map-request work are resolved; the remaining material risk is establishing a public-data boundary for detailed ownership observations.
 
 **Original findings:** 1 Critical, 6 Significant, 3 Cleanup  
 **Status:** 6 resolved, 1 partially resolved, 3 remaining

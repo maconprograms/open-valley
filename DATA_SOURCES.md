@@ -1,5 +1,11 @@
 # Open Valley Data Sources
 
+Purpose: Preserve a historical inventory of sources used by the earlier research application.
+Audience: Researchers reconciling legacy work with the current baseline.
+Status: reference
+Owner: Open Valley maintainers
+Last updated: 2026-08-04
+
 > **Historical data-inventory note:** This document primarily describes the
 > earlier PostgreSQL/agent research application and includes counts and
 > classifications that are not the source of truth for the active dashboard.
@@ -481,16 +487,9 @@ STR listings (Airbnb/VRBO) need to be matched to our parcel layer for analysis.
 
 #### Method 1: Spatial Join (Primary)
 
-```sql
--- Match STR point to parcel polygon
-SELECT
-    str.listing_id,
-    str.name,
-    p.span,
-    p.address
-FROM str_listings str
-JOIN parcels p ON ST_Contains(p.geometry, ST_SetSRID(ST_Point(str.lng, str.lat), 4326));
-```
+The legacy application used a point-in-polygon match between a listing location
+and a parcel geometry. That implementation is historical context, not a
+baseline source or residency classification.
 
 #### Method 2: Address Fuzzy Matching (Fallback)
 
@@ -527,17 +526,9 @@ def match_address(str_address: str, parcel_addresses: list[str]) -> str | None:
 
 Property transfers include SPAN which directly links to our parcel data.
 
-```sql
--- Link transfer to parcel
-SELECT
-    t.*,
-    p.address,
-    p.assessed_total,
-    ts.homestead_filed
-FROM property_transfers t
-JOIN parcels p ON t.span = p.span
-LEFT JOIN tax_status ts ON p.id = ts.parcel_id;
-```
+The legacy application joined transfer rows to parcel records by SPAN. The
+baseline retains transfer events as source observations and does not infer a
+homestead transition without dated before-and-after evidence.
 
 ---
 
