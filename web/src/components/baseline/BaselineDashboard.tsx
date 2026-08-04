@@ -18,6 +18,21 @@ interface BaselineSummary {
   out_of_state_mailing: Counts;
 }
 
+interface HomesteadTrendObservation {
+  grand_list_year: number;
+  source_available_for_warren: boolean;
+  grand_list_records_with_parcid: number;
+  homestead_filed: number | null;
+  known_homestead_denominator: number | null;
+  homestead_filed_percent_of_known: number | null;
+}
+
+interface HomesteadTrend {
+  measure: string;
+  caveat: string;
+  observations: HomesteadTrendObservation[];
+}
+
 const apiBase = process.env.NEXT_PUBLIC_BASELINE_API_URL || "http://localhost:8998";
 
 function Percentage({ numerator, denominator }: { numerator: number; denominator: number }) {
@@ -27,6 +42,7 @@ function Percentage({ numerator, denominator }: { numerator: number; denominator
 
 export default function BaselineDashboard() {
   const [summary, setSummary] = useState<BaselineSummary | null>(null);
+  const [trend, setTrend] = useState<HomesteadTrend | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,6 +55,13 @@ export default function BaselineDashboard() {
       .catch(() => {
         setError("The current Warren source run is unavailable. No fallback figures are shown.");
       });
+    fetch(`${apiBase}/api/baseline/trends/homestead`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+        return response.json() as Promise<HomesteadTrend>;
+      })
+      .then(setTrend)
+      .catch(() => setTrend(null));
   }, []);
 
   return (
@@ -87,6 +110,8 @@ export default function BaselineDashboard() {
 
           <BaselineMap apiBase={apiBase} />
 
+          {trend && <HomesteadTrendTable trend={trend} />}
+
           <section className="grid gap-4 md:grid-cols-3">
             <Fact label="GIS coverage" value={`${summary.source_coverage.matched_geometries.toLocaleString()} matched`} detail={`${summary.source_coverage.unmatched_accounts.toLocaleString()} tax accounts have no matched parcel geometry.`} />
             <Fact label="PTTR transfers" value={summary.source_coverage.transfer_events.toLocaleString()} detail="Documented transfer records; linked only where a unique SPAN match exists." />
@@ -95,6 +120,64 @@ export default function BaselineDashboard() {
         </>
       )}
     </div>
+  );
+}
+
+function HomesteadTrendTable({ trend }: { trend: HomesteadTrend }) {
+  const available = trend.observations.filter(
+    (observation) => observation.source_available_for_warren && observation.homestead_filed_percent_of_known !== null,
+  );
+  const first = available[0];
+  const last = available.at(-1);
+  const change = first && last
+    ? last.homestead_filed_percent_of_known! - first.homestead_filed_percent_of_known!
+    : null;
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <p className="text-sm font-medium uppercase tracking-wide text-emerald-700">Annual Grand List trend</p>
+        <h2 className="mt-1 text-xl font-semibold text-slate-950">Homestead filed, 2018–2025</h2>
+        <p className="mt-2 max-w-4xl text-sm text-slate-600">{trend.caveat}</p>
+        {change !== null && (
+          <p className="mt-3 text-sm font-medium text-slate-800">
+            Change from {first!.grand_list_year} to {last!.grand_list_year}: {change.toFixed(2)} percentage points.
+          </p>
+        )}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600">
+            <tr>
+              <th className="px-5 py-3 font-medium">Grand List year</th>
+              <th className="px-5 py-3 font-medium">Filed</th>
+              <th className="px-5 py-3 font-medium">Known denominator</th>
+              <th className="px-5 py-3 font-medium">Rate</th>
+              <th className="px-5 py-3 font-medium">Coverage note</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {trend.observations.map((observation) => (
+              <tr key={observation.grand_list_year} className="text-slate-700">
+                <td className="px-5 py-3 font-medium text-slate-950">{observation.grand_list_year}</td>
+                <td className="px-5 py-3">{observation.homestead_filed?.toLocaleString() || "—"}</td>
+                <td className="px-5 py-3">{observation.known_homestead_denominator?.toLocaleString() || "—"}</td>
+                <td className="px-5 py-3 font-semibold">
+                  {observation.homestead_filed_percent_of_known === null
+                    ? "Unavailable"
+                    : `${observation.homestead_filed_percent_of_known.toFixed(2)}%`}
+                </td>
+                <td className="px-5 py-3 text-slate-500">
+                  {observation.source_available_for_warren
+                    ? `${observation.grand_list_records_with_parcid.toLocaleString()} records with PARCID`
+                    : "VCGI archive has no usable Warren Grand List join"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
