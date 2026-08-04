@@ -38,6 +38,10 @@ def create_baseline_router(repository: BaselineRepository | None = None) -> APIR
     def transfers():
         return read(repository.transfer_events)
 
+    @router.get("/trends/homestead")
+    def homestead_trend():
+        return read(repository.homestead_trend)
+
     @router.get("/sources")
     def sources():
         return read(repository.sources)

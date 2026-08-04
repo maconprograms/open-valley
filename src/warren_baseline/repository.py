@@ -212,6 +212,21 @@ class BaselineRepository:
     def transfer_events(self) -> list[dict[str, Any]]:
         return self.records("transfer_events")
 
+    def homestead_trend(self) -> dict[str, Any]:
+        """Return direct annual Grand List filing observations, with coverage intact."""
+        path = self.root.parent / "historical" / "warren_homestead_accounts_by_year.json"
+        if not path.exists():
+            raise LookupError("No historical Warren homestead extraction is available")
+        return {
+            "measure": "homestead filed among Grand List records with PARCID",
+            "unit": "grand_list_records",
+            "caveat": (
+                "This is an annual HSDECL filing rate, not a housing-unit rate or a "
+                "direct measure of full-time residency. Source coverage can change by year."
+            ),
+            "observations": json.loads(path.read_text(encoding="utf-8")),
+        }
+
     def sources(self) -> dict[str, Any]:
         run_id = self.current_run_id()
         source_records = self.records("source_records", run_id)
