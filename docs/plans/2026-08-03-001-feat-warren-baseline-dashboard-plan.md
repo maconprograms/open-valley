@@ -13,6 +13,12 @@ deepened: 2026-08-03
 
 # Warren Baseline Dashboard - Plan
 
+Purpose: Define the accepted Warren-only evidence-first dashboard contract and deferred scope.
+Audience: Contributors implementing or reviewing the baseline.
+Status: reference
+Owner: Open Valley maintainers
+Last updated: 2026-08-04
+
 ## Goal Capsule
 
 - **Objective:** Create a map-first, researcher-facing dashboard that establishes a facts-only baseline for Warren, Vermont property accounts, housing units, ownership observations, homestead status, and property transfers from 2019 to the present.

@@ -1,5 +1,11 @@
 # Documentation map
 
+Purpose: Route contributors to current baseline documentation and label historical material.
+Audience: Contributors and researchers.
+Status: guide
+Owner: Open Valley maintainers
+Last updated: 2026-08-04
+
 ## Current baseline documentation
 
 - [Project guide](../CLAUDE.md) — product guardrails, architecture, local run,
