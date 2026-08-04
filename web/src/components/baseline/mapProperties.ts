@@ -1,18 +1,17 @@
 export interface SelectedParcel {
   accountId: string;
   address: string | null;
-  homesteadFiled: boolean | null;
-  mailingState: string | null;
-  outOfStateMailing: boolean | null;
+  taxStatusBucket: TaxStatusBucket | null;
   housingUnitClaims: number | null;
   unitEvidenceLevels: string[];
 }
 
+export type TaxStatusBucket = "homestead_filed" | "non_homestead" | "unknown";
+
 export function parcelSummaryLines(parcel: SelectedParcel): string[] {
   return [
     parcel.address || "No address in extract",
-    `Homestead filed: ${formatObservation(parcel.homesteadFiled)}`,
-    `Mailing state: ${parcel.mailingState || "unknown"}`,
+    `Tax status: ${formatTaxStatusBucket(parcel.taxStatusBucket)}`,
     `Housing-unit claims: ${parcel.housingUnitClaims ?? "unknown"} (${parcel.unitEvidenceLevels.join(", ") || "unknown evidence"})`,
   ];
 }
@@ -31,9 +30,7 @@ export function normalizeSelectedParcel(value: unknown): SelectedParcel | null {
   return {
     accountId,
     address: readString(value.address),
-    homesteadFiled: readBoolean(value.homestead_filed),
-    mailingState: readString(value.mailing_state),
-    outOfStateMailing: readBoolean(value.out_of_state_mailing),
+    taxStatusBucket: readTaxStatusBucket(value.tax_status_bucket),
     housingUnitClaims: readNonNegativeInteger(value.housing_unit_claims),
     unitEvidenceLevels: readStringList(value.unit_evidence_levels),
   };
@@ -45,14 +42,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
-}
-
-function readBoolean(value: unknown): boolean | null {
-  if (typeof value === "boolean") return value;
-  if (typeof value !== "string") return null;
-  if (value === "true") return true;
-  if (value === "false") return false;
-  return null;
 }
 
 function readNonNegativeInteger(value: unknown): number | null {
@@ -71,7 +60,14 @@ function readStringList(value: unknown): string[] {
   }
 }
 
-function formatObservation(value: boolean | null): string {
-  if (value === null) return "unknown";
-  return value ? "yes" : "no";
+function readTaxStatusBucket(value: unknown): TaxStatusBucket | null {
+  return value === "homestead_filed" || value === "non_homestead" || value === "unknown"
+    ? value
+    : null;
+}
+
+function formatTaxStatusBucket(value: TaxStatusBucket | null): string {
+  if (value === "homestead_filed") return "Homestead filed";
+  if (value === "non_homestead") return "Non-homestead";
+  return "Unknown";
 }

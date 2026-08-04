@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "@copilotkit/react-ui/styles.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Open Valley — Warren baseline",
-  description: "Source-led Warren, Vermont property, homestead-filing, and mailing-address facts.",
+  description: "Source-led Warren, Vermont property and homestead-filing facts.",
 };
 
 export default function RootLayout({

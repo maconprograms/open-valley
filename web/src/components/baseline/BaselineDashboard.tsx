@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 
 import BaselineMap from "./BaselineMap";
 
-type Counts = { yes: number; no: number; unknown: number; known: number };
+type TaxStatusBuckets = {
+  homestead_filed: number;
+  non_homestead: number;
+  unknown: number;
+};
 
 interface BaselineSummary {
   source_run_id: string;
@@ -14,8 +18,7 @@ interface BaselineSummary {
     total: number;
     by_evidence_level: Record<string, number>;
   };
-  homestead_filed: Counts;
-  out_of_state_mailing: Counts;
+  tax_status_buckets: TaxStatusBuckets;
 }
 
 interface HomesteadTrendObservation {
@@ -82,12 +85,12 @@ export default function BaselineDashboard() {
       <section className="rounded-2xl bg-slate-950 px-6 py-8 text-slate-100 sm:px-8">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-emerald-300">Warren baseline</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-          Property, homestead filing, and mailing-address facts
+          Property accounts and homestead-filing facts
         </h1>
         <p className="mt-3 max-w-3xl text-slate-300">
-          This dashboard distinguishes tax accounts from housing-unit claims. A homestead filing and an
-          out-of-state mailing address are source observations—not proof of year-round occupancy or a
-          second-home classification.
+          This dashboard distinguishes tax accounts from housing-unit claims. A homestead filing is a source
+          observation—not proof of year-round occupancy. Owner mailing data is preserved in the research ledger,
+          but is not used in this visualization.
         </p>
         {summary && (
           <p className="mt-4 text-sm text-slate-400">
@@ -106,13 +109,13 @@ export default function BaselineDashboard() {
             <Metric label="Tax accounts" value={summary.tax_accounts.total.toLocaleString()} detail="NEMRC account rows" />
             <Metric
               label="Homestead filed"
-              value={<Percentage numerator={summary.homestead_filed.yes} denominator={summary.homestead_filed.known} />}
-              detail={`${summary.homestead_filed.yes.toLocaleString()} filed; ${summary.homestead_filed.unknown.toLocaleString()} unknown`}
+              value={<Percentage numerator={summary.tax_status_buckets.homestead_filed} denominator={summary.tax_status_buckets.homestead_filed + summary.tax_status_buckets.non_homestead} />}
+              detail={`${summary.tax_status_buckets.homestead_filed.toLocaleString()} filed; ${summary.tax_status_buckets.unknown.toLocaleString()} unknown`}
             />
             <Metric
-              label="Out-of-state mailing"
-              value={<Percentage numerator={summary.out_of_state_mailing.yes} denominator={summary.out_of_state_mailing.known} />}
-              detail={`${summary.out_of_state_mailing.yes.toLocaleString()} accounts; mailing address only`}
+              label="Non-homestead"
+              value={<Percentage numerator={summary.tax_status_buckets.non_homestead} denominator={summary.tax_status_buckets.homestead_filed + summary.tax_status_buckets.non_homestead} />}
+              detail={`${summary.tax_status_buckets.non_homestead.toLocaleString()} accounts; this does not identify use`}
             />
             <Metric
               label="Housing-unit claims"

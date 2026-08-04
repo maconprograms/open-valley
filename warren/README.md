@@ -27,7 +27,8 @@ coordinates.
 API and map. It is an append-only set of source runs rather than a replacement
 for the source extracts above. `manifest.json` identifies the validated,
 promoted `current_run`; each run preserves JSONL observations, its source
-checksums, coverage, and a privacy-preserving `map.geojson` projection.
+checksums, coverage, and a privacy-preserving `map-tax-status-v1.geojson`
+projection.
 
 The dashboard deliberately shows separate denominators:
 
@@ -36,7 +37,6 @@ The dashboard deliberately shows separate denominators:
 | Tax accounts | Current NEMRC property-account rows | Current account inventory | Housing units or occupied homes |
 | Housing-unit claims | Source-supported claims attached to accounts | Documented, inferred, and unknown physical-unit evidence | An official unit inventory or occupancy |
 | Homestead filed | Accounts with a known VCGI `HSDECL` flag | A filed homestead declaration | A full-time resident |
-| Out-of-state mailing | Accounts with a known owner mailing state | A mailing address outside Vermont | A second home, residency, or buyer intent |
 | PTTR transfers | State transfer-event rows | A recorded sale/transfer event | A homestead gain/loss without dated before-and-after evidence |
 
 ### Refreshing the current baseline
@@ -64,9 +64,12 @@ uv run uvicorn src.warren_baseline.app:app --port 8998
 
 For the browser dashboard, start Next.js from `web/` with `npm run dev -- -p
 3999` and open `http://localhost:3999/`. Its same-origin `/api/baseline/*`
-requests are proxied to the standalone API. The public map exposes factual
-account, filing, mailing-state, and unit-evidence fields only; it does not
-expose owner names or mailing street addresses.
+requests are proxied to the standalone API. The public map exposes only the
+tax-status buckets `homestead_filed`, `non_homestead`, and `unknown`, plus
+address, GIS-link, and unit-evidence fields. It does not expose owner or
+mailing fields. A homestead filing remains a source fact, not an occupancy or
+second-home classification. See `warren/reviews/` for the separate local
+human-review ledger.
 
 ### Historical homestead series
 

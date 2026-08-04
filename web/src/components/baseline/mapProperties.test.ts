@@ -7,17 +7,13 @@ describe("normalizeSelectedParcel", () => {
     expect(normalizeSelectedParcel({
       account_id: "warren:0010001",
       address: "15 BROOK RD",
-      homestead_filed: "true",
-      mailing_state: "VT",
-      out_of_state_mailing: "false",
+      tax_status_bucket: "homestead_filed",
       housing_unit_claims: "1",
       unit_evidence_levels: '["documented", "inferred"]',
     })).toEqual({
       accountId: "warren:0010001",
       address: "15 BROOK RD",
-      homesteadFiled: true,
-      mailingState: "VT",
-      outOfStateMailing: false,
+      taxStatusBucket: "homestead_filed",
       housingUnitClaims: 1,
       unitEvidenceLevels: ["documented", "inferred"],
     });
@@ -40,16 +36,14 @@ describe("normalizeSelectedParcel", () => {
     const parcel = normalizeSelectedParcel({
       account_id: "warren:0010001",
       address: "15 BROOK RD",
-      homestead_filed: true,
-      mailing_state: "VT",
+      tax_status_bucket: "homestead_filed",
       housing_unit_claims: 1,
       unit_evidence_levels: '["documented"]',
     });
 
     expect(parcel && parcelSummaryLines(parcel)).toEqual([
       "15 BROOK RD",
-      "Homestead filed: yes",
-      "Mailing state: VT",
+      "Tax status: Homestead filed",
       "Housing-unit claims: 1 (documented)",
     ]);
   });

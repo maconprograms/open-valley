@@ -43,6 +43,22 @@ class PartyMatchReviewState(StrEnum):
     REJECTED = "rejected"
 
 
+class ReviewSubject(StrEnum):
+    """The source fact or real-world condition a human reviewed."""
+
+    MAILING_ADDRESS = "mailing_address"
+    HOMESTEAD_FILING = "homestead_filing"
+    OCCUPANCY = "occupancy"
+
+
+class ReviewStatus(StrEnum):
+    """A review result; absence of a record means the account is unreviewed."""
+
+    CONFIRMED = "confirmed"
+    CONTRADICTED = "contradicted"
+    NEEDS_FOLLOW_UP = "needs_follow_up"
+
+
 class SourceRun(EvidenceRecord):
     id: str
     town: str
@@ -133,6 +149,20 @@ class OwnershipObservation(EvidenceRecord):
     mailing_state: str | None = None
     mailing_zip: str | None = None
     source: SourceReference
+
+
+class HumanReview(EvidenceRecord):
+    """Append-only local review that never replaces a published observation."""
+
+    id: str
+    account_id: str
+    source_run_id: str
+    subject: ReviewSubject
+    status: ReviewStatus
+    reviewed_at: datetime
+    reviewed_by: str
+    evidence_summary: str = Field(min_length=1)
+    source_observation_ids: list[str] = Field(default_factory=list)
 
 
 class NormalizedPartyMatch(EvidenceRecord):
