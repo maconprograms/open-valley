@@ -108,23 +108,59 @@ def summarize(
             "homestead_unknown": None,
             "known_homestead_denominator": None,
             "homestead_filed_percent_of_known": None,
+            "category_o_other_excluded": None,
+            "category_o_other_and_multiunit_excluded": None,
         }
-    statuses = Counter(str(row.get("HSDECL") or "").strip().upper() for row in account_rows)
-    yes = statuses["Y"]
-    no = statuses["N"]
-    known = yes + no
-    return {
+
+    result = {
         "grand_list_year": year,
         "snapshot_date": snapshot_date,
         "source_url": source_url,
         "source_available_for_warren": True,
         "warren_layer_rows": len(rows),
         "grand_list_records_with_parcid": len(account_rows),
+    }
+    result.update(homestead_rate(account_rows))
+    category_proxy = [row for row in account_rows if not category_o_other_proxy(row)]
+    category_and_multiunit = [row for row in category_proxy if not explicit_multiunit_signal(row)]
+    result["category_o_other_excluded"] = exclusion_summary(account_rows, category_proxy)
+    result["category_o_other_and_multiunit_excluded"] = exclusion_summary(
+        account_rows, category_and_multiunit
+    )
+    return result
+
+
+def homestead_rate(rows: list[dict[str, Any]]) -> dict[str, int | float | None]:
+    statuses = Counter(str(row.get("HSDECL") or "").strip().upper() for row in rows)
+    yes = statuses["Y"]
+    no = statuses["N"]
+    known = yes + no
+    return {
         "homestead_filed": yes,
         "homestead_not_filed": no,
-        "homestead_unknown": len(account_rows) - known,
+        "homestead_unknown": len(rows) - known,
         "known_homestead_denominator": known,
         "homestead_filed_percent_of_known": round(100 * yes / known, 2) if known else None,
+    }
+
+
+def category_o_other_proxy(row: dict[str, Any]) -> bool:
+    """Stable category proxy; verified against current shared-SPAN condo groups."""
+    return str(row.get("CAT") or "").strip().upper() in {"O", "OTHER"}
+
+
+def explicit_multiunit_signal(row: dict[str, Any]) -> bool:
+    description = str(row.get("DESCPROP") or "").upper()
+    return "APT" in description or any(f"{count} DWL" in description for count in range(2, 10))
+
+
+def exclusion_summary(
+    original_rows: list[dict[str, Any]], remaining_rows: list[dict[str, Any]]
+) -> dict[str, int | float | None]:
+    return {
+        "records_removed": len(original_rows) - len(remaining_rows),
+        "records_remaining": len(remaining_rows),
+        **homestead_rate(remaining_rows),
     }
 
 
@@ -162,7 +198,15 @@ def main() -> None:
         rows = rows_from_archive(archive)
         summaries.append(summarize(year, snapshot_date, rows, archive_url(snapshot_date)))
         for row in rows:
-            all_rows.append({"grand_list_year": year, "snapshot_date": snapshot_date, **row})
+            all_rows.append(
+                {
+                    "grand_list_year": year,
+                    "snapshot_date": snapshot_date,
+                    **row,
+                    "category_o_other_proxy": category_o_other_proxy(row),
+                    "explicit_multiunit_signal": explicit_multiunit_signal(row),
+                }
+            )
 
     current_rows = rows_from_current_geojson(args.current_geojson)
     current_years = {
@@ -175,7 +219,15 @@ def main() -> None:
     current_year = current_years.pop()
     summaries.append(summarize(current_year, "current", current_rows, CURRENT_VCGI_SOURCE))
     for row in current_rows:
-        all_rows.append({"grand_list_year": current_year, "snapshot_date": "current", **row})
+        all_rows.append(
+            {
+                "grand_list_year": current_year,
+                "snapshot_date": "current",
+                **row,
+                "category_o_other_proxy": category_o_other_proxy(row),
+                "explicit_multiunit_signal": explicit_multiunit_signal(row),
+            }
+        )
 
     summaries.sort(key=lambda summary: summary["grand_list_year"])
 
@@ -183,7 +235,13 @@ def main() -> None:
     summary_path = args.output_directory / "warren_homestead_accounts_by_year.json"
     summary_path.write_text(json.dumps(summaries, indent=2, default=str) + "\n", encoding="utf-8")
     rows_path = args.output_directory / "warren_grand_list_homestead_records.csv"
-    fieldnames = ["grand_list_year", "snapshot_date", *FIELDS]
+    fieldnames = [
+        "grand_list_year",
+        "snapshot_date",
+        *FIELDS,
+        "category_o_other_proxy",
+        "explicit_multiunit_signal",
+    ]
     with rows_path.open("w", newline="", encoding="utf-8") as output:
         writer = csv.DictWriter(output, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()

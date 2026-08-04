@@ -25,6 +25,13 @@ interface HomesteadTrendObservation {
   homestead_filed: number | null;
   known_homestead_denominator: number | null;
   homestead_filed_percent_of_known: number | null;
+  category_o_other_excluded: ExclusionSummary | null;
+}
+
+interface ExclusionSummary {
+  records_removed: number;
+  records_remaining: number;
+  homestead_filed_percent_of_known: number | null;
 }
 
 interface HomesteadTrend {
@@ -139,6 +146,12 @@ function HomesteadTrendTable({ trend }: { trend: HomesteadTrend }) {
         <p className="text-sm font-medium uppercase tracking-wide text-emerald-700">Annual Grand List trend</p>
         <h2 className="mt-1 text-xl font-semibold text-slate-950">Homestead filed, 2018–2025</h2>
         <p className="mt-2 max-w-4xl text-sm text-slate-600">{trend.caveat}</p>
+        <p className="mt-2 max-w-4xl text-sm text-slate-600">
+          Sensitivity: the second rate excludes source category <code>O</code> / <code>Other</code>.
+          In the current extract, that category almost entirely overlaps accounts sharing a <code>C-</code>
+          SPAN—the source&apos;s condominium/common-area grouping. It is a transparent proxy, not an assertion
+          that every excluded record is a condominium.
+        </p>
         {change !== null && (
           <p className="mt-3 text-sm font-medium text-slate-800">
             Change from {first!.grand_list_year} to {last!.grand_list_year}: {change.toFixed(2)} percentage points.
@@ -152,7 +165,8 @@ function HomesteadTrendTable({ trend }: { trend: HomesteadTrend }) {
               <th className="px-5 py-3 font-medium">Grand List year</th>
               <th className="px-5 py-3 font-medium">Filed</th>
               <th className="px-5 py-3 font-medium">Known denominator</th>
-              <th className="px-5 py-3 font-medium">Rate</th>
+              <th className="px-5 py-3 font-medium">All-record rate</th>
+              <th className="px-5 py-3 font-medium">Rate excluding O / Other</th>
               <th className="px-5 py-3 font-medium">Coverage note</th>
             </tr>
           </thead>
@@ -166,6 +180,17 @@ function HomesteadTrendTable({ trend }: { trend: HomesteadTrend }) {
                   {observation.homestead_filed_percent_of_known === null
                     ? "Unavailable"
                     : `${observation.homestead_filed_percent_of_known.toFixed(2)}%`}
+                </td>
+                <td className="px-5 py-3 font-semibold text-emerald-800">
+                  {observation.category_o_other_excluded?.homestead_filed_percent_of_known === null ||
+                  !observation.category_o_other_excluded
+                    ? "Unavailable"
+                    : `${observation.category_o_other_excluded.homestead_filed_percent_of_known.toFixed(2)}%`}
+                  {observation.category_o_other_excluded && (
+                    <span className="ml-1 text-xs font-normal text-slate-500">
+                      ({observation.category_o_other_excluded.records_removed.toLocaleString()} removed)
+                    </span>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-slate-500">
                   {observation.source_available_for_warren

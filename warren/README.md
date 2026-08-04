@@ -78,6 +78,13 @@ The resulting annual metric is **homestead filed among Grand List records with
 as a documented coverage gap because it has no usable Warren Grand List join;
 the first usable year is 2018.
 
+The extraction also includes a sensitivity that excludes `CAT=O` (or legacy
+`CAT=Other`) records. In the current source, 1,304 of 1,305 `O` records share a
+`C-` SPAN, the VCGI condominium/common-area grouping; this makes the category a
+useful resort/condo-density proxy. It remains a proxy: the dashboard labels the
+exclusion rather than asserting every `O` record is a condominium or that all
+other records are low-density homes.
+
 For this first town, the append-only source files are the right storage layer:
 they preserve raw archive provenance, are reviewable without a database, and
 keep the time series reproducible. Add Postgres once we need cross-town queries,
