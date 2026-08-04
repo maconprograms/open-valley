@@ -1,0 +1,22 @@
+{
+  "completed_at": "2026-08-04T01:03:49.136376Z",
+  "coverage": {
+    "accounts": 3105,
+    "housing_unit_claims": 3109,
+    "matched_geometries": 3003,
+    "parcel_geometries": 3105,
+    "transfer_events": 2003,
+    "unmatched_accounts": 102
+  },
+  "id": "warren-2da137d198aa05ec",
+  "input_checksums": {
+    "joined": "f051ba5f775f6e8d9164cff28fde59eae5597d5fabc1f61adaf81da19fc4ad99",
+    "parcels": "059a833c6095556bb590dcd127ad48ee8ca183d762440ac77b70d18e4f50c385",
+    "pttr": "8508834578297941e13506ec3dba649401f77dc67ead10832904654548378086"
+  },
+  "parser_version": "warren-baseline-v1",
+  "retrieved_at": "2026-08-04T01:03:48.842750Z",
+  "source_effective_date": null,
+  "status": "validated",
+  "town": "Warren"
+}
