@@ -62,6 +62,12 @@ legacy database or AI services with:
 uv run uvicorn src.warren_baseline.app:app --port 8998
 ```
 
+For the browser dashboard, start Next.js from `web/` with `npm run dev -- -p
+3999` and open `http://localhost:3999/`. Its same-origin `/api/baseline/*`
+requests are proxied to the standalone API. The public map exposes factual
+account, filing, mailing-state, and unit-evidence fields only; it does not
+expose owner names or mailing street addresses.
+
 ### Historical homestead series
 
 The VCGI archive retains Grand List snapshots, including the source `HSDECL`
