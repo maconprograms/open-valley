@@ -1,5 +1,11 @@
 # Running the Warren baseline locally
 
+Purpose: Start and verify the standalone Warren baseline locally.
+Audience: Local developers and researchers.
+Status: guide
+Owner: Open Valley maintainers
+Last updated: 2026-08-04
+
 The active dashboard has two services and does not require PostgreSQL, Docker,
 or the legacy AI/chat API.
 
