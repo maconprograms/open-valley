@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from .repository import BaselineRepository
+from .repository import BaselineRepository, ReviewLedgerError
 
 DEFAULT_BASELINE_ROOT = Path(__file__).resolve().parents[2] / "warren" / "outputs" / "baseline"
 
@@ -22,6 +22,8 @@ def create_baseline_router(repository: BaselineRepository | None = None) -> APIR
             return method()
         except LookupError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+        except ReviewLedgerError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
 
     @router.get("/summary")
     def summary():

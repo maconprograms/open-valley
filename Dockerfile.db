@@ -1,8 +1,0 @@
-# Use official pgvector image which includes PostGIS
-FROM pgvector/pgvector:pg16
-
-# The pgvector image is based on postgres:16
-# We need to add PostGIS
-RUN apt-get update && apt-get install -y \
-    postgresql-16-postgis-3 \
-    && rm -rf /var/lib/apt/lists/*

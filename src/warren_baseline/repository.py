@@ -10,6 +10,18 @@ from pathlib import Path
 from typing import Any
 
 from .lineage import read_jsonl
+from pydantic import ValidationError
+
+from .schema import HumanReview, ReviewSubject
+
+
+TAX_STATUS_BUCKETS = ("homestead_filed", "non_homestead", "unknown")
+MAP_PROJECTION_FILENAME = "map-tax-status-v1.geojson"
+REVIEW_SUBJECTS = tuple(subject.value for subject in ReviewSubject)
+
+
+class ReviewLedgerError(ValueError):
+    """A locally-authored human-review ledger could not be read safely."""
 
 
 class BaselineRepository:
@@ -20,8 +32,9 @@ class BaselineRepository:
     the pointer clients read.
     """
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, review_root: Path | None = None):
         self.root = root
+        self.review_root = review_root or root.parent.parent / "reviews"
         self._records_cache: dict[Path, tuple[int, list[dict[str, Any]]]] = {}
 
     @property
@@ -82,7 +95,7 @@ class BaselineRepository:
         os.replace(temporary_path, self.manifest_path)
 
     def _write_map_projection(self, run_id: str) -> None:
-        path = self.run_directory(run_id) / "map.geojson"
+        path = self.run_directory(run_id) / MAP_PROJECTION_FILENAME
         if path.exists():
             return
         payload = self._build_map_projection(run_id)
@@ -94,7 +107,6 @@ class BaselineRepository:
         accounts = {record["id"]: record for record in self.records("property_accounts", run_id)}
         geometries = self.records("parcel_geometries", run_id)
         assessments = self._by_account("assessment_snapshots", run_id)
-        ownership = self._by_account("ownership_observations", run_id)
         units = self._by_account("housing_unit_claims", run_id)
         features: list[dict[str, Any]] = []
         for geometry in geometries:
@@ -102,9 +114,7 @@ class BaselineRepository:
                 continue
             account_id = geometry["account_id"]
             assessment = self._first(assessments.get(account_id, []))
-            owner = self._first(ownership.get(account_id, []))
             unit_claims = units.get(account_id, [])
-            mailing_state = owner.get("mailing_state") if owner else None
             features.append(
                 {
                     "type": "Feature",
@@ -113,13 +123,7 @@ class BaselineRepository:
                         "account_id": account_id,
                         "address": accounts.get(account_id, {}).get("address"),
                         "gis_match": geometry["link_confidence"],
-                        "homestead_filed": (
-                            assessment.get("homestead_filed") if assessment else None
-                        ),
-                        "mailing_state": mailing_state,
-                        "out_of_state_mailing": bool(
-                            mailing_state and mailing_state.upper() != "VT"
-                        ),
+                        "tax_status_bucket": self.tax_status_bucket(assessment),
                         "housing_unit_claims": len(unit_claims),
                         "unit_evidence_levels": sorted(
                             {claim["evidence_level"] for claim in unit_claims}
@@ -143,10 +147,23 @@ class BaselineRepository:
     def _first(records: list[dict[str, Any]]) -> dict[str, Any] | None:
         return records[0] if records else None
 
+    @staticmethod
+    def tax_status_bucket(assessment: dict[str, Any] | None) -> str:
+        """Return a map-safe bucket from the direct HSDECL observation only."""
+        homestead_filed = assessment.get("homestead_filed") if assessment else None
+        if homestead_filed is True:
+            return "homestead_filed"
+        if homestead_filed is False:
+            return "non_homestead"
+        return "unknown"
+
     def map_projection_path(self) -> Path:
-        path = self.run_directory() / "map.geojson"
+        run_id = self.current_run_id()
+        path = self.run_directory(run_id) / MAP_PROJECTION_FILENAME
         if not path.exists():
-            raise LookupError("Current source run has not been projected")
+            raise LookupError(
+                f"Baseline source run has no materialized map projection: {run_id}"
+            )
         return path
 
     def map_projection(self) -> dict[str, Any]:
@@ -157,20 +174,13 @@ class BaselineRepository:
         run_id = self.current_run_id()
         accounts = self.records("property_accounts", run_id)
         assessments = self._by_account("assessment_snapshots", run_id)
-        ownership = self._by_account("ownership_observations", run_id)
         units = self.records("housing_unit_claims", run_id)
 
-        homestead = Counter()
-        out_of_state = Counter()
+        tax_status = Counter()
         for account in accounts:
             account_id = account["id"]
             assessment = self._first(assessments.get(account_id, []))
-            value = assessment.get("homestead_filed") if assessment else None
-            homestead[{True: "yes", False: "no"}.get(value, "unknown")] += 1
-            owner = self._first(ownership.get(account_id, []))
-            state = owner.get("mailing_state") if owner else None
-            mailing_key = "unknown" if not state else "yes" if state.upper() != "VT" else "no"
-            out_of_state[mailing_key] += 1
+            tax_status[self.tax_status_bucket(assessment)] += 1
 
         return {
             "source_run_id": run_id,
@@ -180,17 +190,10 @@ class BaselineRepository:
                 "total": len(units),
                 "by_evidence_level": dict(Counter(unit["evidence_level"] for unit in units)),
             },
-            "homestead_filed": self._counts_with_total(homestead),
-            "out_of_state_mailing": self._counts_with_total(out_of_state),
-        }
-
-    @staticmethod
-    def _counts_with_total(counts: Counter[str]) -> dict[str, int]:
-        return {
-            "yes": counts["yes"],
-            "no": counts["no"],
-            "unknown": counts["unknown"],
-            "known": counts["yes"] + counts["no"],
+            "tax_status_buckets": {
+                bucket: tax_status[bucket]
+                for bucket in TAX_STATUS_BUCKETS
+            },
         }
 
     def account_detail(self, account_id: str) -> dict[str, Any]:
@@ -209,17 +212,68 @@ class BaselineRepository:
             for event in self.records("transfer_events", run_id)
             if event.get("account_id") == account_id
         ]
+        reviews = self.human_reviews(account_id, source_run_id=run_id)
+        review_status_by_subject = {subject: "unreviewed" for subject in REVIEW_SUBJECTS}
+        for review in reviews:
+            review_status_by_subject[review["subject"]] = review["status"]
         return {
             "source_run_id": run_id,
             "account": account,
             "assessment": assessment,
             "housing_unit_claims": unit_claims,
             "ownership_observations": ownership,
-            "mailing_states": sorted(
-                {record["mailing_state"] for record in ownership if record.get("mailing_state")}
-            ),
+            "review_status_by_subject": review_status_by_subject,
+            "human_reviews": reviews,
             "transfer_events": transfers,
         }
+
+    @property
+    def review_path(self) -> Path:
+        return self.review_root / "property_reviews.jsonl"
+
+    def human_reviews(
+        self, account_id: str | None = None, source_run_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Read validated local reviews without mutating the raw source ledger."""
+        if not self.review_path.exists():
+            return []
+        try:
+            records = read_jsonl(self.review_path)
+            reviews = [
+                HumanReview.model_validate(record).model_dump(mode="json")
+                for record in records
+            ]
+        except (json.JSONDecodeError, OSError, ValidationError) as error:
+            raise ReviewLedgerError(f"Invalid human-review ledger: {error}") from error
+        if account_id:
+            reviews = [review for review in reviews if review["account_id"] == account_id]
+        if source_run_id:
+            reviews = [review for review in reviews if review["source_run_id"] == source_run_id]
+        return sorted(reviews, key=lambda review: review["reviewed_at"])
+
+    def review_queue(self) -> list[dict[str, Any]]:
+        """Minimal private-review queue; raw mailing fields remain out of the map."""
+        run_id = self.current_run_id()
+        assessments = self._by_account("assessment_snapshots", run_id)
+        review_status_by_account = {
+            account["id"]: {subject: "unreviewed" for subject in REVIEW_SUBJECTS}
+            for account in self.records("property_accounts", run_id)
+        }
+        for review in self.human_reviews(source_run_id=run_id):
+            review_status_by_account.setdefault(
+                review["account_id"], {subject: "unreviewed" for subject in REVIEW_SUBJECTS}
+            )[review["subject"]] = review["status"]
+        return [
+            {
+                "account_id": account["id"],
+                "address": account.get("address"),
+                "tax_status_bucket": self.tax_status_bucket(
+                    self._first(assessments.get(account["id"], []))
+                ),
+                "review_status_by_subject": review_status_by_account[account["id"]],
+            }
+            for account in self.records("property_accounts", run_id)
+        ]
 
     def transfer_events(self) -> list[dict[str, Any]]:
         return self.records("transfer_events")
