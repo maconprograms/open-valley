@@ -1,5 +1,13 @@
 # Open Valley Data Sources
 
+> **Historical data-inventory note:** This document primarily describes the
+> earlier PostgreSQL/agent research application and includes counts and
+> classifications that are not the source of truth for the active dashboard.
+> For current Warren baseline sources, definitions, coverage, and refresh steps,
+> use [`warren/README.md`](warren/README.md). Do not carry a historical number
+> from this document into the baseline without reconciling it to a promoted
+> source run.
+
 Reference for all data sources, APIs, and import pipelines.
 
 For entity relationships and data models, see `docs/DATA_ARCHITECTURE.md`.
