@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { normalizeSelectedParcel, parcelSummaryLines, type SelectedParcel } from "./mapProperties";
 
-type Filter = "all" | "homestead" | "not_homestead" | "out_of_state";
+type Filter = "all" | "homestead_filed" | "non_homestead" | "unknown";
 
 const mapFilters: Record<Filter, unknown[] | null> = {
   all: null,
-  homestead: ["==", ["get", "homestead_filed"], true],
-  not_homestead: ["==", ["get", "homestead_filed"], false],
-  out_of_state: ["==", ["get", "out_of_state_mailing"], true],
+  homestead_filed: ["==", ["get", "tax_status_bucket"], "homestead_filed"],
+  non_homestead: ["==", ["get", "tax_status_bucket"], "non_homestead"],
+  unknown: ["==", ["get", "tax_status_bucket"], "unknown"],
 };
 
 function applyFilter(map: import("maplibre-gl").Map, filter: Filter) {
@@ -68,9 +68,9 @@ export default function BaselineMap({ apiBase }: { apiBase: string }) {
               paint: {
                 "fill-color": [
                   "case",
-                  ["==", ["get", "homestead_filed"], true], "#059669",
-                  ["==", ["get", "out_of_state_mailing"], true], "#d97706",
-                  "#64748b",
+                  ["==", ["get", "tax_status_bucket"], "homestead_filed"], "#059669",
+                  ["==", ["get", "tax_status_bucket"], "non_homestead"], "#d97706",
+                  "#94a3b8",
                 ],
                 "fill-opacity": 0.62,
               },
@@ -131,7 +131,7 @@ export default function BaselineMap({ apiBase }: { apiBase: string }) {
       <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-semibold text-slate-950">Warren tax-account map</h2>
-          <p className="text-sm text-slate-600">Color shows filing and mailing observations, not occupancy.</p>
+          <p className="text-sm text-slate-600">Color shows the source tax-status observation, not occupancy.</p>
         </div>
         <label className="text-sm font-medium text-slate-700">
           Filter{" "}
@@ -142,9 +142,9 @@ export default function BaselineMap({ apiBase }: { apiBase: string }) {
             setFilter(nextFilter);
           }}>
             <option value="all">All mapped accounts</option>
-            <option value="homestead">Homestead filed</option>
-            <option value="not_homestead">No homestead filing</option>
-            <option value="out_of_state">Out-of-state mailing</option>
+            <option value="homestead_filed">Homestead filed</option>
+            <option value="non_homestead">Non-homestead</option>
+            <option value="unknown">Unknown status</option>
           </select>
         </label>
       </div>
@@ -154,14 +154,13 @@ export default function BaselineMap({ apiBase }: { apiBase: string }) {
       </div>
       <div className="grid gap-3 border-t border-slate-200 p-5 sm:grid-cols-3">
         <Legend color="bg-emerald-600" label="Homestead filed" />
-        <Legend color="bg-amber-600" label="Out-of-state mailing address" />
-        <Legend color="bg-slate-500" label="Other or unknown" />
+        <Legend color="bg-amber-600" label="Non-homestead" />
+        <Legend color="bg-slate-400" label="Unknown status" />
       </div>
       {selected && (
         <div className="border-t border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
           <p className="font-semibold text-slate-950">{selected.address || "No address in extract"}</p>
-          <p className="mt-1">Homestead filed: {selected.homesteadFiled === null ? "unknown" : selected.homesteadFiled ? "yes" : "no"}</p>
-          <p>Mailing state: {selected.mailingState || "unknown"}</p>
+          <p className="mt-1">Tax status: {selected.taxStatusBucket === "homestead_filed" ? "Homestead filed" : selected.taxStatusBucket === "non_homestead" ? "Non-homestead" : "Unknown"}</p>
           <p>Housing-unit claims: {selected.housingUnitClaims ?? "unknown"} ({selected.unitEvidenceLevels.join(", ") || "unknown evidence"})</p>
         </div>
       )}

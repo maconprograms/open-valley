@@ -24,7 +24,7 @@ class BaselineApiTests(unittest.TestCase):
             output_root=root / "baseline",
             retrieved_at=datetime(2026, 8, 3, tzinfo=UTC),
         )
-        repository = BaselineRepository(root / "baseline")
+        repository = BaselineRepository(root / "baseline", root / "reviews")
         repository.promote(result.run_id)
         app = FastAPI()
         app.include_router(create_baseline_router(repository))
@@ -45,7 +45,9 @@ class BaselineApiTests(unittest.TestCase):
         self.assertTrue(map_data.headers["content-type"].startswith("application/geo+json"))
         self.assertNotIn("owner_text", map_data.json()["features"][0]["properties"])
         self.assertEqual(detail.status_code, 200)
-        self.assertEqual(detail.json()["mailing_states"], ["MA"])
+        self.assertEqual(
+            detail.json()["review_status_by_subject"]["homestead_filing"], "unreviewed"
+        )
         ownership = detail.json()["ownership_observations"]
         self.assertEqual(ownership[0]["owner_text"], "CARTER PATRICIA SUE")
         self.assertEqual(sources.status_code, 200)
@@ -53,6 +55,10 @@ class BaselineApiTests(unittest.TestCase):
 
     def test_unknown_account_returns_not_found(self):
         response = self.client.get("/api/baseline/accounts/warren:missing")
+        self.assertEqual(response.status_code, 404)
+
+    def test_review_queue_is_not_part_of_the_public_api(self):
+        response = self.client.get("/api/baseline/review-queue")
         self.assertEqual(response.status_code, 404)
 
     def test_standalone_app_serves_the_materialized_homestead_trend(self):

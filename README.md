@@ -3,9 +3,8 @@
 An evidence-first civic-data baseline for Warren, Vermont.
 
 The active dashboard distinguishes tax accounts, housing-unit evidence,
-homestead filings, owner mailing geography, and property-transfer events. It
-does not classify a property as a second home or prove full-time residency from
-a single field.
+homestead filings, and property-transfer events. It does not classify a
+property as a second home or prove full-time residency from a single field.
 
 ## Start the Warren baseline
 
@@ -22,7 +21,7 @@ npm run dev -- -p 3999
 ```
 
 Open <http://localhost:3999/>. The web app proxies `/api/baseline/*` to the
-standalone API, so no legacy database or AI service is needed for this workflow.
+standalone API, so no database or AI service is needed for this workflow.
 
 ## Where to start
 
@@ -36,6 +35,4 @@ standalone API, so no legacy database or AI service is needed for this workflow.
 
 The current product scope is Warren only. The data model is designed to support
 future comparisons with other HUUSD towns without changing the meaning of its
-core records. Older database, chat, STR, and Front Porch Forum experiments are
-retained as research context; they are not the source of truth for the active
-baseline.
+core records.

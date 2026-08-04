@@ -8,7 +8,7 @@ Last updated: 2026-08-04
 
 Open Valley is a local civic-data project that begins with Warren, Vermont. The
 active product is a map-first baseline for property accounts, housing-unit
-evidence, homestead filings, owner mailing geography, and transfer records.
+evidence, homestead filings, and transfer records.
 It is designed to establish checkable facts before drawing conclusions about
 second homes, full-time residency, or housing pressure.
 
@@ -18,8 +18,8 @@ second homes, full-time residency, or housing pressure.
   separately.
 - A filed homestead declaration (`HSDECL`) is an observed tax field, **not**
   proof that someone lives there full time.
-- An owner mailing address outside Vermont is an observed mailing fact, **not**
-  a second-home classification or proof of residence.
+- Owner mailing observations are retained in the private research ledger, but
+  never classify or color the map.
 - Source-exact owner names remain evidence; any normalized party is a separate,
   confidence-scored interpretation.
 - Preserve unknowns, unmatched records, source dates, and coverage. Do not fill
@@ -61,9 +61,9 @@ public deployment.
 | Current documentation map | `docs/README.md` |
 | Audit history and remaining safeguards | `docs/audit/2026-08-04-audit-report.md` |
 
-Older database, chat, STR, FPF, and transition-analysis code remains in the
-repository as research context. It is not the canonical source for the baseline
-dashboard and must not be used to replace its definitions or figures without a
+The former database, chat, STR, FPF, and transition-analysis runtime has been
+removed. Historical source extracts and research documentation are retained as
+context, but may not replace the baseline's definitions or figures without a
 reviewed reconciliation.
 
 ## Local development
@@ -84,9 +84,6 @@ Open `http://localhost:3999/`. The Next.js rewrite proxies `/api/baseline/*` to
 port 8998 by default, so the dashboard uses same-origin requests. For a deployed
 environment, set `INTERNAL_BASELINE_API_URL`; only set
 `NEXT_PUBLIC_BASELINE_API_URL` when a direct, CORS-configured API is intended.
-
-The legacy application uses separate services and is not required to run the
-baseline.
 
 ## Data refresh
 
