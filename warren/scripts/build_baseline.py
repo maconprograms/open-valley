@@ -392,6 +392,22 @@ def materialize_baseline(
     return MaterializationResult(run_id=run_id, coverage=coverage)
 
 
+def import_materialized_run(
+    output_root: Path,
+    run_id: str,
+    ledger: Any,
+) -> Any:
+    """Send a run from an operator-controlled workspace to private Postgres.
+
+    The caller supplies the protected ledger connection. This helper does not
+    read environment variables or print source values, paths, or credentials.
+    """
+    from src.warren_baseline.private_ledger import load_private_run_directory
+
+    source_run, records = load_private_run_directory(output_root / "runs" / run_id)
+    return ledger.import_run(source_run, records)
+
+
 def load_transfer_events(
     pttr_path: Path | None,
     run_id: str,
@@ -463,6 +479,11 @@ def main() -> None:
     parser.add_argument("--parcels", type=Path, default=OUTPUTS / "warren_parcels.geojson")
     parser.add_argument("--pttr", type=Path)
     parser.add_argument("--output", type=Path, default=BASELINE_OUTPUTS)
+    parser.add_argument(
+        "--import-private-ledger",
+        action="store_true",
+        help="operator-only: append the materialized run to protected Postgres",
+    )
     args = parser.parse_args()
     result = materialize_baseline(
         joined_path=args.joined,
@@ -470,6 +491,19 @@ def main() -> None:
         output_root=args.output,
         pttr_path=args.pttr,
     )
+    if args.import_private_ledger:
+        from src.warren_baseline.private_ledger import (
+            PrivateLedger,
+            PrivateLedgerError,
+            connect_private_ledger,
+            private_database_url,
+        )
+
+        try:
+            ledger = PrivateLedger(connect_private_ledger(private_database_url()))
+            import_materialized_run(args.output, result.run_id, ledger)
+        except PrivateLedgerError as error:
+            raise SystemExit(str(error)) from error
     action = "reused" if result.reused else "staged"
     print(f"{action} {result.run_id}: {result.coverage}")
 
