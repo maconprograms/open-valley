@@ -25,7 +25,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      CI_POSTGRES_HOST: postgres
+      CI_POSTGRES_HOST: 127.0.0.1
       CI_POSTGRES_PORT: "5432"
       CI_POSTGRES_DATABASE: openvalley_ci
       CI_POSTGRES_USER: openvalley_ci
@@ -50,7 +50,13 @@ jobs:
           set -euo pipefail
           test -z "${OPENVALLEY_PRODUCTION_DATABASE_URL:-}"
           export OPENVALLEY_PRIVATE_DATABASE_URL="postgresql://${CI_POSTGRES_USER}:${CI_POSTGRES_PASSWORD}@${CI_POSTGRES_HOST}:${CI_POSTGRES_PORT}/${CI_POSTGRES_DATABASE}"
-          uv run python -c 'import os, psycopg; connection = psycopg.connect(os.environ["OPENVALLEY_PRIVATE_DATABASE_URL"]); connection.close()'
+          for attempt in {1..20}; do
+            if uv run python -c 'import os, psycopg; connection = psycopg.connect(os.environ["OPENVALLEY_PRIVATE_DATABASE_URL"]); connection.close()'; then
+              break
+            fi
+            test "$attempt" -lt 20
+            sleep 2
+          done
           uv run python -m unittest discover -s tests
 
       - uses: actions/setup-node@v4
