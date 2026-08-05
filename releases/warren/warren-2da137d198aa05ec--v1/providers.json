@@ -1,51 +1,28 @@
 {
   "providers": [
     {
-      "aggregate_checksum": "1402f28f7bacbbf123d571e5681e3f312b054ed1c74b771428352cfb4dd43186",
-      "field_labels": [
-        "SPAN",
-        "location",
-        "owner",
-        "owner_mailing",
-        "parcel_id"
-      ],
+      "aggregate_checksum": "d3504c3c41ed71ae3b6bcb853d6c811c4a6512c88778f9d2819bbbbab45abd37",
       "provider": "nemrc",
       "provider_url": "https://nemrc.info/",
       "retrieved_at": "2026-08-04T01:03:48.842750Z",
-      "retrieved_timezone": "UTC"
+      "retrieved_timezone": "UTC",
+      "scope": "Aggregate public release metadata only"
     },
     {
-      "aggregate_checksum": "6d4d663bb505174ada813e25be21bc890eb5d46b7ac6cdb246906474915068cc",
-      "field_labels": [
-        "OBJECTID",
-        "ValPdOrTrn",
-        "bUsePrDesc",
-        "buyerState",
-        "closeDate",
-        "sellerSt",
-        "span"
-      ],
+      "aggregate_checksum": "483be5bd1d1a58e72f290f9a1324352f755431a475f98e5150203d615af8326e",
       "provider": "pttr",
       "provider_url": "https://services1.arcgis.com/",
       "retrieved_at": "2026-08-04T01:03:48.842750Z",
-      "retrieved_timezone": "UTC"
+      "retrieved_timezone": "UTC",
+      "scope": "Aggregate public release metadata only"
     },
     {
-      "aggregate_checksum": "eeef87ab7f95a5004449fa28dc13f3ffd5b3d9afa4f7fe3ea9d19640b35fd26f",
-      "field_labels": [
-        "DESCPROP",
-        "GLYEAR",
-        "HSDECL",
-        "OWNER1",
-        "OWNER2",
-        "PARCID",
-        "SPAN",
-        "STGL"
-      ],
+      "aggregate_checksum": "3fb05639971b7482285a9420424936f72eee6264774d318be72036bce88070ca",
       "provider": "vcgi",
       "provider_url": "https://services1.arcgis.com/",
       "retrieved_at": "2026-08-04T01:03:48.842750Z",
-      "retrieved_timezone": "UTC"
+      "retrieved_timezone": "UTC",
+      "scope": "Aggregate public release metadata only"
     }
   ],
   "release_version": "v1",

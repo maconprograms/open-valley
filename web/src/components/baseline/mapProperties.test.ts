@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   normalizePublicMap,
+  findPublicParcels,
   parcelSummaryLines,
-  parcelSummariesFromMap,
 } from "./mapProperties";
 
 describe("normalizePublicMap", () => {
@@ -56,7 +56,7 @@ describe("normalizePublicMap", () => {
     });
   });
 
-  it("orders the keyboard parcel list deterministically without an account identifier", () => {
+  it("returns a small, deterministic address-search result set without an account identifier", () => {
     const parsed = normalizePublicMap({
       type: "FeatureCollection",
       features: [
@@ -73,9 +73,13 @@ describe("normalizePublicMap", () => {
       ],
     });
 
-    expect(parcelSummariesFromMap(parsed.parcels).map((parcel) => parcel.address)).toEqual([
+    expect(findPublicParcels(parsed.parcels, "r", 1)).toEqual([]);
+    expect(findPublicParcels(parsed.parcels, "rd").map((parcel) => parcel.address)).toEqual([
       "APPLE RD",
       "ZINC RD",
+    ]);
+    expect(findPublicParcels(parsed.parcels, "rd", 1).map((parcel) => parcel.address)).toEqual([
+      "APPLE RD",
     ]);
   });
 

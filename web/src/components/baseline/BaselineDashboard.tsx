@@ -38,7 +38,7 @@ interface ProviderDescriptor {
   retrieved_at: string;
   retrieved_timezone: string;
   aggregate_checksum: string;
-  field_labels: string[];
+  scope: "Aggregate public release metadata only";
 }
 
 interface Providers {
@@ -140,7 +140,7 @@ function Provenance({ summary, providers }: { summary: BaselineSummary; provider
     </dl>
     {providers ? <div className="mt-5 border-t border-slate-200 pt-4">
       <h3 className="font-semibold text-slate-950">Provider origins</h3>
-      <ul className="mt-2 space-y-2 text-sm text-slate-700">{providers.providers.map((provider) => <li key={provider.provider}><a className="font-medium text-emerald-800 underline underline-offset-2 focus:outline-2 focus:outline-offset-2 focus:outline-emerald-700" href={provider.provider_url} rel="noreferrer">{provider.provider}</a><span className="text-slate-500"> · retrieved {formatDate(provider.retrieved_at, provider.retrieved_timezone)} · fields: {provider.field_labels.join(", ")}</span></li>)}</ul>
+      <ul className="mt-2 space-y-2 text-sm text-slate-700">{providers.providers.map((provider) => <li key={provider.provider}><a className="font-medium text-emerald-800 underline underline-offset-2 focus:outline-2 focus:outline-offset-2 focus:outline-emerald-700" href={provider.provider_url} rel="noreferrer">{provider.provider}</a><span className="text-slate-500"> · retrieved {formatDate(provider.retrieved_at, provider.retrieved_timezone)} · aggregate public-release metadata only</span></li>)}</ul>
     </div> : <p role="status" className="mt-5 border-t border-slate-200 pt-4 text-sm text-slate-600">Provider provenance is unavailable for this release. No source details are inferred.</p>}
   </section>;
 }

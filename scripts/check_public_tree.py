@@ -93,6 +93,30 @@ def tracked_paths(root: Path) -> list[str]:
     )
 
 
+def historical_private_paths(root: Path) -> list[str]:
+    """Return only forbidden paths reachable from a public Git ref.
+
+    A deleted raw file remains downloadable from repository history.  This
+    check intentionally inspects object names only, never historical content.
+    """
+
+    completed = subprocess.run(
+        ["git", "-C", str(root), "rev-list", "--objects", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    paths = {
+        line.split(" ", 1)[1]
+        for line in completed.stdout.splitlines()
+        if " " in line
+    }
+    return sorted(
+        path for path in paths
+        if path.startswith(RAW_PATH_PREFIXES) and path not in RAW_PATH_EXCEPTIONS
+    )
+
+
 def _field_paths(payload: Any, parent: str = "") -> Iterable[str]:
     if isinstance(payload, dict):
         for key, value in payload.items():
@@ -150,6 +174,10 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     root = arguments.root.resolve()
     diagnostics = scan_paths(root, tracked_paths(root))
+    diagnostics.extend(
+        f"{path}: private-data path remains in reachable Git history"
+        for path in historical_private_paths(root)
+    )
     if diagnostics:
         print("Public-release guard failed:", file=sys.stderr)
         print(*diagnostics, sep="\n", file=sys.stderr)

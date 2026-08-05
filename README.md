@@ -36,10 +36,3 @@ cd web && npm install && npm run dev -- -p 3999
 
 Open <http://localhost:3999/>. This preview is valid only with a generated,
 redacted public release; do not point it at a raw-data directory or database.
-
-## Repository status
-
-This repository is being prepared for public release. A history-remediation
-step is still required before launch because earlier commits contained data that
-does not belong in a public project. Removing history reduces exposure but
-cannot retract existing clones or forks.

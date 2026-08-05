@@ -174,25 +174,13 @@ def _protected_values(records_by_type: Mapping[str, Sequence[Mapping[str, Any]]]
                 visit(child, key)
         elif isinstance(value, str) and key and _SENSITIVE_VALUE_FIELD.search(key):
             normalized = value.strip().casefold()
-            if len(normalized) >= 4:
+            if normalized:
                 values.add(normalized)
 
     for records in records_by_type.values():
         for record in records:
             visit(record)
     return values
-
-
-def _public_property_addresses(
-    records_by_type: Mapping[str, Sequence[Mapping[str, Any]]],
-) -> set[str]:
-    """Return independently projected property locations, never mailing fields."""
-
-    return {
-        address.strip().casefold()
-        for record in records_by_type.get("property_accounts", [])
-        if isinstance((address := record.get("address")), str) and address.strip()
-    }
 
 
 def scan_public_artifact(
@@ -274,16 +262,13 @@ def _provider_descriptors(
             provider = _town_key(source_key.split(":", 1)[0])
             item = providers.setdefault(
                 provider,
-                {"provider": provider, "provider_url": provider_url, "field_labels": set()},
-            )
-            item["field_labels"].update(
-                value for value in source.get("source_fields", []) if isinstance(value, str)
+                {"provider": provider, "provider_url": provider_url},
             )
     if not providers:
         raise PublicReleaseError("public release has no safe provider descriptors")
     result = []
     for provider, item in sorted(providers.items()):
-        labels = sorted(item["field_labels"])
+        scope = "Aggregate public release metadata only"
         result.append(
             {
                 "provider": provider,
@@ -291,9 +276,9 @@ def _provider_descriptors(
                 "retrieved_at": source_run.retrieved_at,
                 "retrieved_timezone": "UTC",
                 "aggregate_checksum": _sha256(
-                    {"provider": provider, "provider_url": item["provider_url"], "field_labels": labels}
+                    {"provider": provider, "provider_url": item["provider_url"], "scope": scope}
                 ),
-                "field_labels": labels,
+                "scope": scope,
             }
         )
     return result
@@ -436,9 +421,7 @@ def export_public_release(
     destination = town_root / release_id
     if destination.exists():
         raise PublicReleaseError("public release version already exists")
-    protected_values = _protected_values(records_by_type) - _public_property_addresses(
-        records_by_type
-    )
+    protected_values = _protected_values(records_by_type)
     artifacts = _build_artifacts(run, records_by_type)
     releases_root.mkdir(parents=True, exist_ok=True)
     staging_root = Path(tempfile.mkdtemp(prefix=".public-release-", dir=releases_root))
