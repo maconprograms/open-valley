@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Open Valley — Warren baseline",
-  description: "Source-led Warren, Vermont property and homestead-filing facts.",
+  title: "Open Valley — Warren public release",
+  description: "A work-in-progress, redacted property-data baseline for the Mad River Valley.",
 };
 
 export default function RootLayout({
