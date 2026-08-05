@@ -5,8 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   mapFeatureCollection,
   normalizePublicMap,
+  findPublicParcels,
   parcelLabel,
-  parcelSummariesFromMap,
   parcelSummaryLines,
   publicMapFeatureKey,
   type PublicParcel,
@@ -76,9 +76,11 @@ export default function BaselineMap({
   const [status, setStatus] = useState<MapStatus>("loading");
   const [malformedFeatures, setMalformedFeatures] = useState(0);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  const listedParcels = useMemo(() => parcelSummariesFromMap(parcels), [parcels]);
-  const selected = parcels.find((parcel) => parcel.key === selectedKey) ?? null;
+  const parcelsByKey = useMemo(() => new Map(parcels.map((parcel) => [parcel.key, parcel])), [parcels]);
+  const searchResults = useMemo(() => findPublicParcels(parcels, search), [parcels, search]);
+  const selected = selectedKey ? parcelsByKey.get(selectedKey) ?? null : null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -140,7 +142,7 @@ export default function BaselineMap({
           map.on("click", "baseline-parcels-fill", (event) => setSelectedKey(publicMapFeatureKey(event.features?.[0]?.properties)));
           map.on("mousemove", "baseline-parcels-fill", (event) => {
             const key = publicMapFeatureKey(event.features?.[0]?.properties);
-            const parcel = parcels.find((item) => item.key === key);
+            const parcel = key ? parcelsByKey.get(key) : null;
             if (parcel) hoverPopup.setLngLat(event.lngLat).setDOMContent(tooltipContent(parcel)).addTo(map);
           });
           map.on("mouseenter", "baseline-parcels-fill", () => { map.getCanvas().style.cursor = "pointer"; });
@@ -155,7 +157,7 @@ export default function BaselineMap({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [parcels]);
+  }, [parcels, parcelsByKey]);
 
   useEffect(() => {
     filterRef.current = filter;
@@ -170,7 +172,7 @@ export default function BaselineMap({
 
   function selectParcel(key: string | null) {
     setSelectedKey(key);
-    const parcel = parcels.find((item) => item.key === key);
+    const parcel = key ? parcelsByKey.get(key) : null;
     const map = mapRef.current;
     const bounds = parcel && coordinateBounds(parcel.geometry.coordinates);
     if (map && bounds) map.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 350 });
@@ -212,24 +214,36 @@ export default function BaselineMap({
         <div ref={container} className="h-full w-full" aria-hidden="true" />
         {(status === "loading" || status === "unavailable") && <p role="status" className="absolute inset-0 grid place-items-center p-6 text-center text-slate-600">{statusMessage}</p>}
       </div>
-      <div className="grid gap-3 border-t border-slate-200 p-5 sm:grid-cols-3">
+      <div className="grid gap-3 border-t border-slate-200 p-5 sm:grid-cols-3" aria-label="Map key">
         <Legend color="bg-emerald-600" label="Homestead filed" />
         <Legend color="bg-amber-600" label="Non-homestead" />
         <Legend color="bg-slate-400" label="Unknown status" />
       </div>
       {statusMessage && status !== "loading" && <p role="status" className="border-t border-slate-200 bg-amber-50 px-5 py-3 text-sm text-amber-950">{statusMessage}</p>}
-      <div className="border-t border-slate-200 p-5" aria-labelledby="parcel-list-heading">
-        <h3 id="parcel-list-heading" className="font-semibold text-slate-950">Keyboard parcel list</h3>
-        <p className="mt-1 text-sm text-slate-600">This list contains the same public parcel summaries as the map. Choose an address to select and outline it on the map.</p>
-        {listedParcels.length > 0 ? (
-          <label className="mt-3 block text-sm font-medium text-slate-700">
-            Public parcel summary ({listedParcels.length.toLocaleString()} mapped accounts)
-            <select className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-950 focus:outline-2 focus:outline-offset-2 focus:outline-emerald-700" value={selectedKey ?? ""} onChange={(event) => selectParcel(event.target.value || null)}>
-              <option value="">Choose a public parcel summary</option>
-              {listedParcels.map((parcel) => <option key={parcel.key} value={parcel.key}>{parcelLabel(parcel)} — {parcel.tax_status_bucket.replaceAll("_", " ")}</option>)}
-            </select>
-          </label>
-        ) : <p className="mt-3 text-sm text-slate-600">No usable public parcel summaries are available.</p>}
+      <div className="border-t border-slate-200 p-5" aria-labelledby="parcel-search-heading">
+        <h3 id="parcel-search-heading" className="font-semibold text-slate-950">Find an address</h3>
+        <p className="mt-1 max-w-3xl text-sm text-slate-600">Search the public address shown on the map. Results are limited to eight at a time, so the page does not create a 3,000-item control. Search results and the selected summary state the tax-field observation in words; map color is only a visual aid.</p>
+        {parcels.length > 0 ? <>
+          <label className="mt-3 block max-w-xl text-sm font-medium text-slate-700" htmlFor="parcel-address-search">Address search</label>
+          <input
+            id="parcel-address-search"
+            className="mt-1 block w-full max-w-xl rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-950 placeholder:text-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-emerald-700"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Start with at least two letters, for example “Brook”"
+            aria-describedby="parcel-search-help"
+          />
+          <p id="parcel-search-help" className="mt-2 text-sm text-slate-600">Only public property addresses are searchable. Mailing addresses and owner information are not part of this release.</p>
+          {search.trim().length >= 2 && <ul className="mt-3 max-w-xl divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200" aria-label="Address search results">
+            {searchResults.length ? searchResults.map((parcel) => <li key={parcel.key}>
+              <button type="button" className="flex w-full items-center justify-between gap-4 px-3 py-3 text-left text-sm hover:bg-slate-50 focus:outline-2 focus:outline-offset-[-2px] focus:outline-emerald-700" onClick={() => selectParcel(parcel.key)}>
+                <span className="font-medium text-slate-950">{parcelLabel(parcel)}</span>
+                <span className="shrink-0 text-slate-600">{parcel.tax_status_bucket.replaceAll("_", " ")}</span>
+              </button>
+            </li>) : <li className="px-3 py-3 text-sm text-slate-600">No public address matches that search.</li>}
+          </ul>}
+        </> : <p className="mt-3 text-sm text-slate-600">Public address search will be available when the map finishes loading.</p>}
         {selected && <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700" aria-live="polite">
           {parcelSummaryLines(selected).map((line, index) => <p key={line} className={index === 0 ? "font-semibold text-slate-950" : "mt-1"}>{line}</p>)}
         </div>}

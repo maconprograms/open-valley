@@ -50,11 +50,22 @@ export function normalizePublicMap(value: unknown): NormalizedPublicMap {
   return { parcels, malformedFeatures };
 }
 
-export function parcelSummariesFromMap(parcels: PublicParcel[]): PublicParcel[] {
-  return [...parcels].sort((left, right) => {
-    const addressOrder = parcelLabel(left).localeCompare(parcelLabel(right), "en", { sensitivity: "base" });
-    return addressOrder || left.key.localeCompare(right.key);
-  });
+/**
+ * Return a deliberately small, deterministic set of address matches. The map
+ * can contain thousands of parcels, so it is not appropriate to turn every
+ * feature into an interactive control.
+ */
+export function findPublicParcels(parcels: PublicParcel[], query: string, limit = 8): PublicParcel[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase("en-US");
+  if (normalizedQuery.length < 2 || limit < 1) return [];
+
+  return parcels
+    .filter((parcel) => parcelLabel(parcel).toLocaleLowerCase("en-US").includes(normalizedQuery))
+    .sort((left, right) => {
+      const addressOrder = parcelLabel(left).localeCompare(parcelLabel(right), "en", { sensitivity: "base" });
+      return addressOrder || left.key.localeCompare(right.key);
+    })
+    .slice(0, limit);
 }
 
 export function parcelSummaryLines(parcel: PublicParcel): string[] {

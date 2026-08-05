@@ -115,7 +115,7 @@ class PublicProviderDescriptor(PublicArtifact):
     retrieved_at: datetime
     retrieved_timezone: Literal["UTC"]
     aggregate_checksum: str = Field(pattern=r"^[a-f0-9]{64}$")
-    field_labels: list[str] = Field(min_length=1, max_length=100)
+    scope: Literal["Aggregate public release metadata only"]
 
     @field_validator("provider_url")
     @classmethod
@@ -132,14 +132,6 @@ class PublicProviderDescriptor(PublicArtifact):
         if "{" in value or "}" in value:
             raise ValueError("provider URL must not be templated")
         return value
-
-    @field_validator("field_labels")
-    @classmethod
-    def field_labels_are_plain_labels(cls, values: list[str]) -> list[str]:
-        if any(not value or len(value) > 120 for value in values):
-            raise ValueError("provider field labels are invalid")
-        return sorted(set(values))
-
 
 class PublicProviders(PublicArtifact):
     schema_version: Literal[PUBLIC_RELEASE_SCHEMA_VERSION]

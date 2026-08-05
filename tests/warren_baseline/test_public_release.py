@@ -137,6 +137,9 @@ class PublicReleaseTests(unittest.TestCase):
         self.assertEqual(providers["providers"][0]["provider_url"], "https://example.test/")
         self.assertNotIn("source_extract", repr(providers))
         self.assertNotIn("source_key", repr(providers))
+        self.assertEqual(providers["providers"][0]["scope"], "Aggregate public release metadata only")
+        self.assertNotIn("owner", repr(providers).lower())
+        self.assertNotIn("location", repr(providers).lower())
 
     def test_provider_descriptor_rejects_private_locators_and_unknown_nested_fields(self):
         from src.warren_baseline.public_schema import PublicProviderDescriptor
@@ -148,7 +151,7 @@ class PublicReleaseTests(unittest.TestCase):
             "retrieved_at": "2026-08-04T12:00:00Z",
             "retrieved_timezone": "UTC",
             "aggregate_checksum": "abc",
-            "field_labels": ["location"],
+            "scope": "Aggregate public release metadata only",
             "raw_filename": "private.csv",
         }
         with self.assertRaises(ValidationError):
@@ -162,6 +165,15 @@ class PublicReleaseTests(unittest.TestCase):
         property_url_payload.pop("raw_filename")
         with self.assertRaises(ValidationError):
             PublicProviderDescriptor.model_validate(property_url_payload)
+
+    def test_address_matching_a_protected_mailing_value_cannot_be_released(self):
+        from src.warren_baseline.public_release import PublicReleaseSafetyError, export_public_release
+
+        unsafe = synthetic_records()
+        unsafe["property_accounts"][0]["address"] = "CA"
+        unsafe["ownership_observations"][0]["mailing_state"] = "CA"
+        with self.assertRaises(PublicReleaseSafetyError):
+            export_public_release(self.run, unsafe, self.root, now=self.now)
 
     def test_unsafe_output_does_not_promote_or_replace_the_current_pointer(self):
         from src.warren_baseline.public_release import (
