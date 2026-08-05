@@ -183,6 +183,18 @@ def _protected_values(records_by_type: Mapping[str, Sequence[Mapping[str, Any]]]
     return values
 
 
+def _public_property_addresses(
+    records_by_type: Mapping[str, Sequence[Mapping[str, Any]]],
+) -> set[str]:
+    """Return independently projected property locations, never mailing fields."""
+
+    return {
+        address.strip().casefold()
+        for record in records_by_type.get("property_accounts", [])
+        if isinstance((address := record.get("address")), str) and address.strip()
+    }
+
+
 def scan_public_artifact(
     payload: Any, artifact_path: str, protected_values: set[str] | None = None
 ) -> None:
@@ -424,7 +436,9 @@ def export_public_release(
     destination = town_root / release_id
     if destination.exists():
         raise PublicReleaseError("public release version already exists")
-    protected_values = _protected_values(records_by_type)
+    protected_values = _protected_values(records_by_type) - _public_property_addresses(
+        records_by_type
+    )
     artifacts = _build_artifacts(run, records_by_type)
     releases_root.mkdir(parents=True, exist_ok=True)
     staging_root = Path(tempfile.mkdtemp(prefix=".public-release-", dir=releases_root))
