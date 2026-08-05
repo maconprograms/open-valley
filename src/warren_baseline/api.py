@@ -1,52 +1,60 @@
-"""FastAPI endpoints for the evidence-first Warren baseline."""
+"""FastAPI endpoints for the redacted Open Valley public release."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable, TypeVar
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from .repository import BaselineRepository, ReviewLedgerError
+from .repository import PublicReleaseRepository, PublicReleaseUnavailableError
 
-DEFAULT_BASELINE_ROOT = Path(__file__).resolve().parents[2] / "warren" / "outputs" / "baseline"
+DEFAULT_RELEASES_ROOT = Path(__file__).resolve().parents[2] / "releases"
+Result = TypeVar("Result")
 
 
-def create_baseline_router(repository: BaselineRepository | None = None) -> APIRouter:
-    """Create a router with an injectable repository for isolated tests."""
-    repository = repository or BaselineRepository(DEFAULT_BASELINE_ROOT)
-    router = APIRouter(prefix="/api/baseline", tags=["Warren baseline"])
+def _read_public(method: Callable[[], Result]) -> Result:
+    try:
+        return method()
+    except PublicReleaseUnavailableError as error:
+        raise HTTPException(status_code=503, detail="Public release is unavailable.") from error
 
-    def read(method):
-        try:
-            return method()
-        except LookupError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
-        except ReviewLedgerError as error:
-            raise HTTPException(status_code=503, detail=str(error)) from error
+
+def create_baseline_router(repository: PublicReleaseRepository | None = None) -> APIRouter:
+    """Create the bounded release API router with an injectable reader for tests."""
+
+    repository = repository or PublicReleaseRepository(DEFAULT_RELEASES_ROOT)
+    router = APIRouter(prefix="/api/baseline", tags=["Open Valley public release"])
 
     @router.get("/summary")
     def summary():
-        return read(repository.summary)
+        return _read_public(repository.summary)
 
     @router.get("/map", response_class=FileResponse)
     def map_projection():
-        return read(lambda: FileResponse(repository.map_projection_path(), media_type="application/geo+json"))
-
-    @router.get("/accounts/{account_id}")
-    def account_detail(account_id: str):
-        return read(lambda: repository.account_detail(account_id))
-
-    @router.get("/transfers")
-    def transfers():
-        return read(repository.transfer_events)
+        return _read_public(
+            lambda: FileResponse(repository.map_projection_path(), media_type="application/geo+json")
+        )
 
     @router.get("/trends/homestead")
     def homestead_trend():
-        return read(repository.homestead_trend)
+        return _read_public(repository.homestead_trend)
 
-    @router.get("/sources")
-    def sources():
-        return read(repository.sources)
+    @router.get("/providers")
+    def providers():
+        return _read_public(repository.providers)
+
+    return router
+
+
+def create_health_router(repository: PublicReleaseRepository) -> APIRouter:
+    """Create the unprefixed readiness endpoint used by Coolify."""
+
+    router = APIRouter(tags=["service health"])
+
+    @router.get("/healthz")
+    def healthz():
+        return _read_public(repository.health)
 
     return router

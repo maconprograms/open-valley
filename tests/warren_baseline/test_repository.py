@@ -1,115 +1,110 @@
+"""Tests for the public-release-only repository."""
+
+from __future__ import annotations
+
 import json
 import tempfile
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
 
-from warren.scripts.build_baseline import materialize_baseline
 
-from .test_build_baseline import BuildBaselineTests
+def write_public_release(root: Path) -> Path:
+    """Write a schema-valid redacted release fixture with no private ledger."""
+
+    from src.warren_baseline.public_release import export_public_release
+    from src.warren_baseline.schema import SourceRun
+
+    retrieved_at = "2026-08-04T12:00:00Z"
+    source = {
+        "source_run_id": "warren-public-fixture",
+        "source_key": "vcgi:collection",
+        "source_url": "https://example.test/",
+        "source_fields": ["HSDECL", "PARCID"],
+        "retrieved_at": retrieved_at,
+    }
+    run = SourceRun(
+        id="warren-public-fixture",
+        town="Warren",
+        retrieved_at=datetime(2026, 8, 4, 12, tzinfo=UTC),
+        status="validated",
+        parser_version="test-v1",
+        input_checksums={"private-input.csv": "abc"},
+        coverage={"accounts": 1},
+    )
+    records = {
+        "source_records": [{"id": "source:one", "source": source, "raw_values": {}}],
+        "property_accounts": [
+            {"id": "warren:001", "town": "Warren", "address": "1 Public Road", "source": source}
+        ],
+        "parcel_geometries": [
+            {
+                "id": "geometry:warren:001",
+                "account_id": "warren:001",
+                "geometry": {"type": "Polygon", "coordinates": [[[-72.0, 44.0], [-72.1, 44.0], [-72.0, 44.0]]]},
+                "link_confidence": "exact_parcid",
+                "source": source,
+            }
+        ],
+        "assessment_snapshots": [
+            {
+                "id": "assessment:warren:001:2026",
+                "account_id": "warren:001",
+                "grand_list_year": 2026,
+                "homestead_filed": True,
+                "source": source,
+            }
+        ],
+        "housing_unit_claims": [
+            {"id": "unit:warren:001:1", "account_id": "warren:001", "evidence_level": "documented", "source": source}
+        ],
+    }
+    export_public_release(run, records, root, now=datetime(2026, 8, 5, tzinfo=UTC))
+    return root
 
 
-class BaselineRepositoryTests(unittest.TestCase):
+class PublicReleaseRepositoryTests(unittest.TestCase):
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary_directory.name)
-        fixture = BuildBaselineTests()
-        self.result = materialize_baseline(
-            joined_path=fixture.write_joined(self.root),
-            parcels_path=fixture.write_geojson(self.root),
-            output_root=self.root / "baseline",
-            retrieved_at=datetime(2026, 8, 3, tzinfo=UTC),
-        )
+        self.root = write_public_release(Path(self.temporary_directory.name))
 
     def tearDown(self):
         self.temporary_directory.cleanup()
 
-    def test_promotion_writes_a_tax_status_only_map_projection(self):
-        from src.warren_baseline.repository import BaselineRepository
+    def test_reads_only_allowlisted_release_artifacts(self):
+        from src.warren_baseline.repository import PublicReleaseRepository
 
-        repository = BaselineRepository(self.root / "baseline", self.root / "reviews")
-        repository.promote(self.result.run_id)
+        repository = PublicReleaseRepository(self.root)
 
-        projection = repository.map_projection()
-        self.assertEqual(repository.map_projection_path().name, "map-tax-status-v1.geojson")
-        self.assertEqual(projection["source_run_id"], self.result.run_id)
-        self.assertEqual(len(projection["features"]), 1)
-        properties = projection["features"][0]["properties"]
-        self.assertEqual(properties["tax_status_bucket"], "non_homestead")
-        self.assertNotIn("owner_text", properties)
-        self.assertNotIn("mailing_address", properties)
-        self.assertNotIn("mailing_state", properties)
-        self.assertNotIn("out_of_state_mailing", properties)
+        self.assertEqual(repository.summary()["town"], "Warren")
+        self.assertEqual(repository.homestead_trend()["observations"][0]["grand_list_year"], 2026)
+        self.assertEqual(repository.providers()["providers"][0]["provider"], "vcgi")
+        self.assertEqual(repository.map_projection()["features"][0]["properties"]["address"], "1 Public Road")
+        self.assertNotIn("owner_text", repository.map_projection()["features"][0]["properties"])
 
-    def test_summary_keeps_denominators_and_unknowns_explicit(self):
-        from src.warren_baseline.repository import BaselineRepository
+    def test_health_validates_pointer_and_every_required_artifact(self):
+        from src.warren_baseline.repository import PublicReleaseRepository
 
-        repository = BaselineRepository(self.root / "baseline", self.root / "reviews")
-        repository.promote(self.result.run_id)
+        repository = PublicReleaseRepository(self.root)
+        self.assertEqual(repository.health()["status"], "ok")
 
-        summary = repository.summary()
-        self.assertEqual(summary["tax_accounts"]["total"], 1)
-        self.assertEqual(summary["tax_status_buckets"]["non_homestead"], 1)
-        self.assertNotIn("out_of_state_mailing", summary)
-        self.assertEqual(summary["housing_unit_claims"]["total"], 2)
+        pointer = self.root / "warren" / "current.json"
+        release_id = json.loads(pointer.read_text(encoding="utf-8"))["release_id"]
+        (self.root / "warren" / release_id / "providers.json").unlink()
 
-    def test_human_reviews_do_not_replace_source_observations(self):
-        from src.warren_baseline.repository import BaselineRepository
+        with self.assertRaisesRegex(Exception, "unavailable"):
+            repository.health()
 
-        repository = BaselineRepository(self.root / "baseline", self.root / "reviews")
-        repository.promote(self.result.run_id)
-        repository.review_path.parent.mkdir(parents=True)
-        repository.review_path.write_text(
-            json.dumps(
-                {
-                    "id": "review:warren:0010001:mailing-address:2026-08-03",
-                    "account_id": "warren:0010001",
-                    "source_run_id": self.result.run_id,
-                    "subject": "mailing_address",
-                    "status": "contradicted",
-                    "reviewed_at": "2026-08-03T12:00:00Z",
-                    "reviewed_by": "test reviewer",
-                    "evidence_summary": "The source mailing address is stale.",
-                    "source_observation_ids": ["ownership:warren:0010001:1"],
-                }
-            )
-            + "\n"
-            + json.dumps(
-                {
-                    "id": "review:warren:0010001:homestead:previous-run",
-                    "account_id": "warren:0010001",
-                    "source_run_id": "warren-previous-run",
-                    "subject": "homestead_filing",
-                    "status": "confirmed",
-                    "reviewed_at": "2026-08-02T12:00:00Z",
-                    "reviewed_by": "test reviewer",
-                    "evidence_summary": "This review applies only to an earlier source run.",
-                }
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+    def test_missing_or_invalid_pointer_fails_without_paths_or_payloads(self):
+        from src.warren_baseline.repository import PublicReleaseRepository, PublicReleaseUnavailableError
 
-        detail = repository.account_detail("warren:0010001")
-        self.assertEqual(detail["review_status_by_subject"]["mailing_address"], "contradicted")
-        self.assertEqual(detail["review_status_by_subject"]["homestead_filing"], "unreviewed")
-        self.assertEqual(detail["ownership_observations"][0]["mailing_state"], "MA")
-        self.assertEqual(
-            repository.review_queue()[0]["review_status_by_subject"]["mailing_address"],
-            "contradicted",
-        )
-        self.assertNotIn("mailing_state", repository.map_projection()["features"][0]["properties"])
+        repository = PublicReleaseRepository(self.root)
+        (self.root / "warren" / "current.json").write_text("{not json", encoding="utf-8")
 
-    def test_invalid_human_review_ledger_raises_a_controlled_error(self):
-        from src.warren_baseline.repository import BaselineRepository, ReviewLedgerError
-
-        repository = BaselineRepository(self.root / "baseline", self.root / "reviews")
-        repository.promote(self.result.run_id)
-        repository.review_path.parent.mkdir(parents=True)
-        repository.review_path.write_text("not valid json\n", encoding="utf-8")
-
-        with self.assertRaises(ReviewLedgerError):
-            repository.account_detail("warren:0010001")
+        with self.assertRaises(PublicReleaseUnavailableError) as error:
+            repository.summary()
+        self.assertEqual(str(error.exception), "public release unavailable")
+        self.assertNotIn(str(self.root), str(error.exception))
 
 
 if __name__ == "__main__":
