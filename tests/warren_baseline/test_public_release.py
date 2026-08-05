@@ -185,6 +185,24 @@ class PublicReleaseTests(unittest.TestCase):
         self.assertEqual(pointer["release_id"], safe.release_id)
         self.assertFalse((self.root / "warren" / "warren-unsafe--v1").exists())
 
+    def test_canonical_provenance_values_do_not_trigger_private_value_scan(self):
+        from src.warren_baseline.public_release import (
+            PublicReleaseSafetyError,
+            scan_public_artifact,
+        )
+
+        scan_public_artifact(
+            {"town": "Warren", "release_version": "v1"},
+            "summary.json",
+            {"warren"},
+        )
+        with self.assertRaises(PublicReleaseSafetyError):
+            scan_public_artifact(
+                {"address": "Private Test Owner"},
+                "map.geojson",
+                {"private test owner"},
+            )
+
     def test_unvalidated_or_insufficiently_covered_runs_cannot_export(self):
         from src.warren_baseline.public_release import PublicReleaseError, export_public_release
 

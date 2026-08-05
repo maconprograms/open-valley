@@ -63,6 +63,24 @@ RESTRICTED_FIELD_TOKENS = {
 _SENSITIVE_VALUE_FIELD = re.compile(
     r"(?:owner|mailing|review|raw|payload|seller|buyer|party|evidence_summary)", re.I
 )
+CANONICAL_PUBLIC_VALUE_FIELDS = frozenset(
+    {
+        "town",
+        "schema_version",
+        "release_version",
+        "source_run_id",
+        "release_id",
+        "retrieved_timezone",
+        "provider",
+        "provider_url",
+        "label",
+        "sha256",
+        "aggregate_checksum",
+        "measure",
+        "tax_status_bucket",
+        "gis_match",
+    }
+)
 
 
 class PublicReleaseError(RuntimeError):
@@ -187,7 +205,11 @@ def scan_public_artifact(
         elif isinstance(value, list):
             for index, child in enumerate(value):
                 visit(child, f"{path}[{index}]")
-        elif isinstance(value, str) and value.strip().casefold() in protected_values:
+        elif (
+            isinstance(value, str)
+            and path.rsplit(".", 1)[-1] not in CANONICAL_PUBLIC_VALUE_FIELDS
+            and value.strip().casefold() in protected_values
+        ):
             raise PublicReleaseSafetyError(artifact_path, path)
 
     visit(payload, "")
