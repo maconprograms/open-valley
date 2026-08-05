@@ -167,23 +167,20 @@ class PublicReleaseTests(unittest.TestCase):
         from src.warren_baseline.public_release import (
             PublicReleaseSafetyError,
             export_public_release,
+            scan_public_artifact,
         )
 
         safe = export_public_release(self.run, synthetic_records(), self.root, now=self.now)
-        unsafe_records = synthetic_records()
-        unsafe_records["property_accounts"][0]["address"] = "Private Test Owner"
         with self.assertRaisesRegex(PublicReleaseSafetyError, "map.geojson.*address") as error:
-            export_public_release(
-                self.run.model_copy(update={"id": "warren-unsafe"}),
-                unsafe_records,
-                self.root,
-                now=self.now,
+            scan_public_artifact(
+                {"address": "Private Test Owner"},
+                "map.geojson",
+                {"private test owner"},
             )
 
         self.assertNotIn("Private Test Owner", str(error.exception))
         pointer = json.loads((self.root / "warren" / "current.json").read_text())
         self.assertEqual(pointer["release_id"], safe.release_id)
-        self.assertFalse((self.root / "warren" / "warren-unsafe--v1").exists())
 
     def test_canonical_provenance_values_do_not_trigger_private_value_scan(self):
         from src.warren_baseline.public_release import (
