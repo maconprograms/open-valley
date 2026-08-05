@@ -1,25 +1,23 @@
-"""Standalone ASGI app for the Warren evidence-first baseline."""
+"""Standalone ASGI application for the redacted public release reader."""
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from .api import create_baseline_router
-
-app = FastAPI(
-    title="Open Valley — Warren baseline",
-    description="Evidence-first Warren property, homestead, mailing, and transfer facts.",
-    version="1.0.0",
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3999"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.include_router(create_baseline_router())
+from .api import DEFAULT_RELEASES_ROOT, create_baseline_router, create_health_router
+from .repository import PublicReleaseRepository
 
 
-@app.get("/")
-def root() -> dict[str, str]:
-    return {"status": "ok", "service": "Open Valley Warren baseline"}
+def create_app(repository: PublicReleaseRepository | None = None) -> FastAPI:
+    """Build a release-only application with no cross-origin or database setup."""
+
+    repository = repository or PublicReleaseRepository(DEFAULT_RELEASES_ROOT)
+    application = FastAPI(
+        title="Open Valley public release",
+        description="Redacted, evidence-bound Warren release artifacts.",
+        version="1.0.0",
+    )
+    application.include_router(create_baseline_router(repository))
+    application.include_router(create_health_router(repository))
+    return application
+
+
+app = create_app()
