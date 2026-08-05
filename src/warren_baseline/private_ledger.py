@@ -366,6 +366,37 @@ class PrivateLedger:
             grouped[record_type].append(payload)
         return dict(grouped)
 
+    def read_source_run(self, source_run_id: str, town: str) -> SourceRun:
+        """Read validated run metadata for the private release exporter only."""
+
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT id, town, retrieved_at, status, parser_version, input_checksums, coverage,
+                           source_effective_date, completed_at
+                    FROM private_source_runs
+                    WHERE id = %s AND town = %s
+                    """,
+                    (source_run_id, town),
+                )
+                rows = cursor.fetchall()
+        except Exception as error:
+            raise PrivateLedgerError("private ledger read failed") from error
+        if len(rows) != 1:
+            raise PrivateLedgerError("private ledger run was not found")
+        row = rows[0]
+        try:
+            return SourceRun.model_validate(
+                {
+                    "id": row[0], "town": row[1], "retrieved_at": row[2], "status": row[3],
+                    "parser_version": row[4], "input_checksums": row[5], "coverage": row[6],
+                    "source_effective_date": row[7], "completed_at": row[8],
+                }
+            )
+        except ValidationError as error:
+            raise PrivateLedgerError("private ledger run validation failed") from error
+
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     try:
