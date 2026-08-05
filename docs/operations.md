@@ -33,7 +33,7 @@ database or private API address.
 ## Checks
 
 ```bash
-uv run python -m unittest
+uv run python -m unittest discover -s tests
 cd web && npm test && npm run lint && npm run build
 ```
 
