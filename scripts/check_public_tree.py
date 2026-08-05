@@ -16,6 +16,10 @@ from typing import Any, Iterable
 
 from pydantic import ValidationError
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from src.warren_baseline.public_schema import (
     PublicHomesteadTrend,
     PublicManifest,
