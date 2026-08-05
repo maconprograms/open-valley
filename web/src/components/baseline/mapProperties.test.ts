@@ -1,47 +1,95 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeSelectedParcel, parcelSummaryLines } from "./mapProperties";
+import {
+  normalizePublicMap,
+  parcelSummaryLines,
+  parcelSummariesFromMap,
+} from "./mapProperties";
 
-describe("normalizeSelectedParcel", () => {
-  it("parses MapLibre's serialized GeoJSON array properties", () => {
-    expect(normalizeSelectedParcel({
-      account_id: "warren:0010001",
-      address: "15 BROOK RD",
-      tax_status_bucket: "homestead_filed",
-      housing_unit_claims: "1",
-      unit_evidence_levels: '["documented", "inferred"]',
-    })).toEqual({
-      accountId: "warren:0010001",
-      address: "15 BROOK RD",
-      taxStatusBucket: "homestead_filed",
-      housingUnitClaims: 1,
-      unitEvidenceLevels: ["documented", "inferred"],
-    });
-  });
-
-  it("keeps malformed optional values from crashing the details panel", () => {
-    expect(normalizeSelectedParcel({
-      account_id: "warren:0010002",
-      housing_unit_claims: "not a number",
-      unit_evidence_levels: "not JSON",
+describe("normalizePublicMap", () => {
+  it("accepts the redacted map shape and assigns an internal selection key", () => {
+    expect(normalizePublicMap({
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-72.86, 44.12] },
+        properties: {
+          address: "15 BROOK RD",
+          gis_match: "exact_parcid",
+          tax_status_bucket: "homestead_filed",
+          housing_unit_claims: 1,
+          unit_evidence_levels: ["documented", "inferred"],
+        },
+      }],
     })).toMatchObject({
-      accountId: "warren:0010002",
-      housingUnitClaims: null,
-      unitEvidenceLevels: ["not JSON"],
+      parcels: [{
+        key: "parcel-0",
+        address: "15 BROOK RD",
+        tax_status_bucket: "homestead_filed",
+        housing_unit_claims: 1,
+        unit_evidence_levels: ["documented", "inferred"],
+      }],
+      malformedFeatures: 0,
     });
-    expect(normalizeSelectedParcel({ unit_evidence_levels: "[]" })).toBeNull();
   });
 
-  it("formats a concise, evidence-labeled map rollover", () => {
-    const parcel = normalizeSelectedParcel({
-      account_id: "warren:0010001",
-      address: "15 BROOK RD",
-      tax_status_bucket: "homestead_filed",
-      housing_unit_claims: 1,
-      unit_evidence_levels: '["documented"]',
+  it("drops malformed public features without making the whole map unusable", () => {
+    expect(normalizePublicMap({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [-72.86, 44.12] },
+          properties: {
+            address: "15 BROOK RD",
+            gis_match: "exact_parcid",
+            tax_status_bucket: "unknown",
+            housing_unit_claims: 0,
+            unit_evidence_levels: ["unknown"],
+          },
+        },
+        { type: "Feature", geometry: null, properties: {} },
+      ],
+    })).toMatchObject({
+      parcels: [expect.objectContaining({ address: "15 BROOK RD" })],
+      malformedFeatures: 1,
+    });
+  });
+
+  it("orders the keyboard parcel list deterministically without an account identifier", () => {
+    const parsed = normalizePublicMap({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [-72.86, 44.12] },
+          properties: { address: "ZINC RD", gis_match: "exact_span", tax_status_bucket: "unknown", housing_unit_claims: 0, unit_evidence_levels: ["unknown"] },
+        },
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [-72.87, 44.13] },
+          properties: { address: "APPLE RD", gis_match: "exact_parcid", tax_status_bucket: "homestead_filed", housing_unit_claims: 1, unit_evidence_levels: ["documented"] },
+        },
+      ],
     });
 
-    expect(parcel && parcelSummaryLines(parcel)).toEqual([
+    expect(parcelSummariesFromMap(parsed.parcels).map((parcel) => parcel.address)).toEqual([
+      "APPLE RD",
+      "ZINC RD",
+    ]);
+  });
+
+  it("formats a concise, evidence-labeled public parcel summary", () => {
+    const [parcel] = normalizePublicMap({
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-72.86, 44.12] },
+        properties: { address: "15 BROOK RD", gis_match: "exact_parcid", tax_status_bucket: "homestead_filed", housing_unit_claims: 1, unit_evidence_levels: ["documented"] },
+      }],
+    }).parcels;
+
+    expect(parcelSummaryLines(parcel)).toEqual([
       "15 BROOK RD",
       "Tax status: Homestead filed",
       "Housing-unit claims: 1 (documented)",
