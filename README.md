@@ -21,6 +21,36 @@ Protected source imports, personal data, and review records are handled outside
 the public deployment. The public API provides release summary, map, homestead
 trend, provider descriptors, and health information only.
 
+## How it is built
+
+Open Valley is a small data system as well as a web application. Public
+municipal assessment/tax records, parcel GIS data, and supplemental public
+property-transfer records are imported into a protected Postgres evidence
+ledger. The import workflow validates provenance, joins, counts, and coverage;
+it then produces a versioned JSON/GeoJSON release through a strict public-field
+allowlist. The release is what powers the map and aggregate trends.
+
+The stack is:
+
+- **Web:** Next.js, React, TypeScript, Tailwind CSS, and MapLibre GL.
+- **Public API:** Python, FastAPI, and Pydantic.
+- **Protected data workflow:** PostgreSQL and Python import/release tooling.
+- **Packaging:** separate Docker images for the web application and API.
+
+The project uses LLM-assisted development as a fast, reviewable pairing
+workflow: changes are developed in small units, checked locally, and verified
+with tests and release validation. The data model, publication boundary, and
+release criteria remain explicit code and human-reviewed decisions.
+
+## Deployment
+
+The public site runs as a two-service Docker Compose deployment. The Next.js
+service serves the web app and proxies same-origin `/api/baseline/*` requests to
+the FastAPI service; browsers never receive a database address or direct access
+to a protected API. The API container contains only the release reader and
+approved redacted artifacts. It has no protected-ledger credentials, and raw
+source data and human review records are excluded from the public runtime.
+
 See [the methodology](docs/methodology.md) for definitions and limits, and
 [operations](docs/operations.md) for the release workflow and local preview.
 
