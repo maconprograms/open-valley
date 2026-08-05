@@ -1,0 +1,22 @@
+{
+  "counts": {
+    "housing_unit_claims": 3109,
+    "tax_accounts": 3105
+  },
+  "coverage": {
+    "accounts_denominator": 3105,
+    "geometry_denominator": 3105,
+    "homestead_denominator": 3105,
+    "known_homestead": 3002,
+    "matched_geometries": 3003
+  },
+  "release_version": "v1",
+  "schema_version": "openvalley-public-release/v1",
+  "source_run_id": "warren-2da137d198aa05ec",
+  "tax_status_buckets": {
+    "homestead_filed": 513,
+    "non_homestead": 2489,
+    "unknown": 103
+  },
+  "town": "Warren"
+}
