@@ -1,0 +1,15 @@
+{
+  "measure": "HSDECL filing observation among available tax accounts",
+  "observations": [
+    {
+      "grand_list_year": 2025,
+      "homestead_filed": 513,
+      "tax_accounts": 3002,
+      "unknown_homestead": 0
+    }
+  ],
+  "release_version": "v1",
+  "schema_version": "openvalley-public-release/v1",
+  "source_run_id": "warren-2da137d198aa05ec",
+  "town": "Warren"
+}
