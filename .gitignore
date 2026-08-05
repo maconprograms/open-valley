@@ -71,4 +71,13 @@ next-env.d.ts
 # Warren raw page cache (re-fetchable)
 warren/raw_html/
 warren/raw_vcgi_snapshots/
-warren/outputs/_all_records_summary.html
+
+# Protected-ledger inputs and records. The public data product lives only in
+# releases/ and must pass the public-release guard before it is committed.
+warren/outputs/
+warren/reviews/
+private/
+raw/
+*.sqlite
+*.sqlite3
+*.db

@@ -32,6 +32,7 @@ api/.env
 # Git
 .git/
 .gitignore
+.context/
 
 # Docker (exclude all but prod Dockerfile)
 docker-compose*.yml
@@ -42,8 +43,15 @@ docs/
 *.md
 !README.md
 
-# Data files (too large for container)
+# Private and raw data are never part of a public build context. Public images
+# copy application code and the explicit releases/ directory only.
 data/
+warren/outputs/
+warren/reviews/
+warren/raw_html/
+warren/raw_vcgi_snapshots/
+private/
+raw/
 *.csv
 *.pdf
 
@@ -59,6 +67,7 @@ test_*.py
 .serena/
 .python-version
 scripts/
+warren/scripts/
 
 # Temporary files
 *.tmp
