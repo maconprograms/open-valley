@@ -1,0 +1,55 @@
+{
+  "providers": [
+    {
+      "aggregate_checksum": "1402f28f7bacbbf123d571e5681e3f312b054ed1c74b771428352cfb4dd43186",
+      "field_labels": [
+        "SPAN",
+        "location",
+        "owner",
+        "owner_mailing",
+        "parcel_id"
+      ],
+      "provider": "nemrc",
+      "provider_url": "https://nemrc.info/",
+      "retrieved_at": "2026-08-04T01:03:48.842750Z",
+      "retrieved_timezone": "UTC"
+    },
+    {
+      "aggregate_checksum": "6d4d663bb505174ada813e25be21bc890eb5d46b7ac6cdb246906474915068cc",
+      "field_labels": [
+        "OBJECTID",
+        "ValPdOrTrn",
+        "bUsePrDesc",
+        "buyerState",
+        "closeDate",
+        "sellerSt",
+        "span"
+      ],
+      "provider": "pttr",
+      "provider_url": "https://services1.arcgis.com/",
+      "retrieved_at": "2026-08-04T01:03:48.842750Z",
+      "retrieved_timezone": "UTC"
+    },
+    {
+      "aggregate_checksum": "eeef87ab7f95a5004449fa28dc13f3ffd5b3d9afa4f7fe3ea9d19640b35fd26f",
+      "field_labels": [
+        "DESCPROP",
+        "GLYEAR",
+        "HSDECL",
+        "OWNER1",
+        "OWNER2",
+        "PARCID",
+        "SPAN",
+        "STGL"
+      ],
+      "provider": "vcgi",
+      "provider_url": "https://services1.arcgis.com/",
+      "retrieved_at": "2026-08-04T01:03:48.842750Z",
+      "retrieved_timezone": "UTC"
+    }
+  ],
+  "release_version": "v1",
+  "schema_version": "openvalley-public-release/v1",
+  "source_run_id": "warren-2da137d198aa05ec",
+  "town": "Warren"
+}

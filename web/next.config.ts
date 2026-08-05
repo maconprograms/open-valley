@@ -1,28 +1,25 @@
 import type { NextConfig } from "next";
-import createMDX from "@next/mdx";
+
+const publicApiVariable = "NEXT_PUBLIC_BASELINE_API_URL";
+
+if (process.env[publicApiVariable]) {
+  throw new Error(
+    `${publicApiVariable} is not supported. Browser requests must use same-origin /api/baseline routes.`,
+  );
+}
 
 const nextConfig: NextConfig = {
-  // Support MDX files as pages
-  pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
-
-  // Proxy API requests to FastAPI backend in production
+  // This value is evaluated by the Next.js server only. Browser code continues
+  // to request relative /api/baseline paths.
   async rewrites() {
-    const apiUrl = process.env.INTERNAL_API_URL || "http://localhost:8999";
+    const baselineApiUrl = process.env.INTERNAL_BASELINE_API_URL || "http://localhost:8998";
     return [
       {
-        source: "/api/:path*",
-        destination: `${apiUrl}/:path*`,
+        source: "/api/baseline/:path*",
+        destination: `${baselineApiUrl}/api/baseline/:path*`,
       },
     ];
   },
 };
 
-const withMDX = createMDX({
-  // Add markdown plugins here if needed
-  options: {
-    remarkPlugins: [],
-    rehypePlugins: [],
-  },
-});
-
-export default withMDX(nextConfig);
+export default nextConfig;

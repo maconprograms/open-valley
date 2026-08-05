@@ -1,0 +1,27 @@
+{
+  "artifacts": {
+    "homestead_trend": "homestead-trend.json",
+    "map": "map.geojson",
+    "providers": "providers.json",
+    "summary": "summary.json"
+  },
+  "coverage": {
+    "accounts_denominator": 3105,
+    "geometry_denominator": 3105,
+    "homestead_denominator": 3105,
+    "known_homestead": 3002,
+    "matched_geometries": 3003
+  },
+  "input_checksums": [
+    {
+      "label": "private-input-set",
+      "sha256": "fdb0edc9bbc995afb470cbb113bc490fa4d0daa783811ccd40bb5c72958dc720"
+    }
+  ],
+  "release_version": "v1",
+  "retrieved_at": "2026-08-04T01:03:48.842750Z",
+  "retrieved_timezone": "UTC",
+  "schema_version": "openvalley-public-release/v1",
+  "source_run_id": "warren-2da137d198aa05ec",
+  "town": "Warren"
+}

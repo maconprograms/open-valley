@@ -1,0 +1,79 @@
+name: Public release guardrails
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  public-release:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: openvalley_ci
+          POSTGRES_USER: openvalley_ci
+          POSTGRES_PASSWORD: openvalley_ci
+        options: >-
+          --health-cmd "pg_isready -U openvalley_ci -d openvalley_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CI_POSTGRES_HOST: 127.0.0.1
+      CI_POSTGRES_PORT: "5432"
+      CI_POSTGRES_DATABASE: openvalley_ci
+      CI_POSTGRES_USER: openvalley_ci
+      CI_POSTGRES_PASSWORD: openvalley_ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.0"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reject tracked private data and unsafe release fields
+        run: uv run python scripts/check_public_tree.py
+
+      - name: Run backend and release-boundary tests against ephemeral Postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${OPENVALLEY_PRODUCTION_DATABASE_URL:-}"
+          export OPENVALLEY_PRIVATE_DATABASE_URL="postgresql://${CI_POSTGRES_USER}:${CI_POSTGRES_PASSWORD}@${CI_POSTGRES_HOST}:${CI_POSTGRES_PORT}/${CI_POSTGRES_DATABASE}"
+          for attempt in {1..20}; do
+            if uv run python -c 'import os, psycopg; connection = psycopg.connect(os.environ["OPENVALLEY_PRIVATE_DATABASE_URL"]); connection.close()'; then
+              break
+            fi
+            test "$attempt" -lt 20
+            sleep 2
+          done
+          uv run python -m unittest discover -s tests
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Test and build the public web application
+        working-directory: web
+        run: |
+          npm ci
+          npm test
+          npm run lint
+          npm run build
+
+      - name: Validate the Coolify Compose configuration
+        run: docker compose -f docker-compose.coolify.yml config --quiet
